@@ -1,0 +1,207 @@
+<html>
+<head>
+<title>Demonstrate WebGLSloth</title>
+</head>
+
+<body>
+<canvas id="myCanvas" width="1024" height="512" style="border:1px solid #000000;">
+</canvas> 
+<div id="fps">
+hello
+</div>
+<div id="infodiv">
+hello
+</div>
+
+<img id="sky" src="sky.JPG"></img><br>
+
+<script src="SlothGL.js"></script>
+
+<script>
+//********************************************************************************************
+// Global variables
+var renderer = new SlothGL();
+
+// For keeping track of time
+var now, elapsed, then;
+
+// For the translation variables
+var Tx = 0.0, Ty = 0.0, Tz = 0.0;
+
+// testing info
+var numTexCreate = 0;
+var numTexLoad = 0;
+var numTexBind = 0;
+
+// Animate or not
+var doAnimate = true;
+
+// Shader programs from code from matsuda and kanda 2012
+// Found in WebGL Programming Guide
+// Vertex shader program
+var VSHADER_SOURCE =
+  'attribute vec4 a_Position;\n' +
+  'attribute vec2 a_TexCoord;\n' +
+  'varying vec2 v_TexCoord;\n' +
+  'uniform vec4 u_Translation;\n' +
+  'void main() {\n' +
+  '  gl_Position = a_Position + u_Translation;\n' +
+  '  v_TexCoord = a_TexCoord;\n' +
+  '}\n';
+
+// Fragment shader program
+var FSHADER_SOURCE =
+  '#ifdef GL_ES\n' +
+  'precision mediump float;\n' +
+  '#endif\n' +
+  'uniform sampler2D u_Sampler;\n' +
+  'varying vec2 v_TexCoord;\n' +
+  'void main() {\n' +
+  '  gl_FragColor = texture2D(u_Sampler, v_TexCoord);\n' +
+  '}\n';
+
+// Random words
+var loremipsum = [
+	"Lorem", "ipsum", "dolor", "sit", "amet,", "consectetur", "adipiscing", "elit,", "sed do",
+	"eiusmod", "tempor", "incididunt", "ut", "labore", "et", "dolore", "magna", "aliqua.", "Ut enim", "ad", "minim",
+	"veniam,", "quis", "nostrud", "exercitation", "ullamco", "laboris", "nisi", "ut", "aliquip", "ex ea", "commodo", "consequat.",
+	"Duis", "aute", "irure", "dolor", "in", "reprehenderit", "in", "voluptate", "velit", "esse", "cillum", "dolore", "eu",
+	"fugiat", "nulla", "pariatur.", "Excepteur", "sint", "occaecat", "cupidatat", "non", "proident,", "sunt", "in", "culpa", 
+	"qui", "officia", "deserunt", "mollit", "anim", "id est", "laborum.",
+	"123", "456", "789", "0!@#"
+];
+
+
+//******************************************************************************************
+function main(){
+	// Setup
+	var canvas = document.getElementById('myCanvas');
+	renderer.hello();
+	renderer.setup(canvas);
+	
+	// Clear <canvas>
+	renderer.clear();
+	renderer.setFont("12px Times New Roman");
+	
+	// Test many words
+	var vertical = 50;
+	var horiz = 50;
+	for(i=0; i<vertical; i++){
+		for(j=0; j<horiz; j++){
+			// get a random word
+			index = Math.floor(Math.random()*loremipsum.length);
+			//words.addWord(loremipsum[index], 0+j*25, 0+i*12);  
+			renderer.fillText(loremipsum[index], 0+j*25, 0+i*12);
+		}
+	}
+
+	console.log(renderer.textures.textureArray);
+	console.log(renderer.textures.canvasArray);
+/*	
+	// Write a word
+	renderer.fillText("text", 20, 20);
+	renderer.setFont("48px Times New Roman");
+	renderer.setColor("white");
+	renderer.fillText("cat", 200, 30);
+	renderer.setFont("24px Times New Roman");
+	renderer.setColor("red");
+	renderer.fillText("text", 20, 60);
+	console.log(renderer.textures.wordArray);
+	
+	//var img = document.getElementById("sky");
+	//renderer.drawImage(img, 50, 50, 50, 50);
+	renderer.fillText("superextralongdinosauruslongerlongerlongreallyreallyreallylonglikereallyreally long123", 20, 160);
+*/
+	// setup event handler
+	//canvas.onclick = (function(ev){click(ev,renderer,canvas)});
+	animate(renderer);
+}
+main();
+
+function draw(renderer){
+	// Clear WebGL canvas
+	renderer.clear();
+
+	renderer.gl.drawArrays(renderer.gl.TRIANGLE_STRIP, 0, 4);
+	renderer.render();
+
+	// Info about textures
+	var infodiv = document.getElementById("infodiv");
+	infoString = "Textures Created: "+numTexCreate;
+	infoString += "<br>Textures Loaded: "+numTexLoad;
+	infoString += "<br>Textures Bound: "+numTexBind;
+	infoString += "<br>Texture size 512x512";
+	infodiv.innerHTML = infoString;
+}
+function animate(renderer){
+	draw(renderer);
+	
+	// Calculate fps
+	now = Date.now();
+	elapsed = now - then;
+	then = now;
+	document.getElementById("fps").innerHTML = "FPS: "+Math.round(1000/elapsed);
+	
+	// animate
+	for(i=0;i<renderer.textures.wordArray.length;i++){
+		renderer.textures.wordArray[i].Tx += (Math.random()*2 -1)/100;
+		renderer.textures.wordArray[i].Ty += (Math.random()*2 -1)/100;
+		//console.log(words.wordArray[i].Tx);
+	}
+
+	requestAnimationFrame(function(){animate(renderer)});
+}
+
+function click(ev, renderer, canvas) {
+	var x = ev.clientX; // x coordinate of a mouse pointer
+	var y = ev.clientY; // y coordinate of a mouse pointer
+	var rect = ev.target.getBoundingClientRect() ;
+
+	// Get correct coordinates from bounding box
+	x = x-rect.left;
+	y = y-rect.top;
+
+	var vertices = new Float32Array([
+	// Vertex coordinates, texture coordinate
+		x,  y,
+		x,  y-10,
+		x+10,  y,
+		x+10,  y-10
+	]);
+	
+	//console.log(vertices);
+	initVertexBuffers(renderer.gl, vertices);
+}
+
+function initVertexBuffers(gl, vertices) {
+  
+  // Create a buffer object
+  var vertexBuffer = gl.createBuffer();
+  if (!vertexBuffer) {
+    console.log('Failed to create the buffer object');
+    return -1;
+  }
+
+  // Bind the buffer object to target
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+  // Write date into the buffer object
+  gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+  var a_Position = gl.getAttribLocation(gl.program, 'a_Position');
+  if (a_Position < 0) {
+    console.log('Failed to get the storage location of a_Position');
+    return -1;
+  }
+  // Assign the buffer object to a_Position variable
+  gl.vertexAttribPointer(a_Position, 2, gl.FLOAT, false, 0, 0);
+
+  // Enable the assignment to a_Position variable
+  gl.enableVertexAttribArray(a_Position);
+
+  //return n;
+}
+
+</script>
+
+</body>
+</html>
