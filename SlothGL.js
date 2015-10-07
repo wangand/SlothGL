@@ -191,9 +191,16 @@ SlothGL.prototype.initializeShaders = function(gl, vshader, fshader){
 }
 
 // This function clears the webgl canvas
-SlothGL.prototype.clear = function(){
-	// Specify the color for clearing <canvas>
-	this.gl.clearColor(0, 0, 0, 1);
+// default black
+// Takes optional rbga values
+SlothGL.prototype.clear = function(r,b,g,a){
+	// Default Black if nothing added
+	if(r === undefined){
+		this.gl.clearColor(0, 0, 0, 1);
+	}
+	else{ // otherwise use values given
+		this.gl.clearColor(r, g, b, 1)
+	}
 
 	// Clear renderer
 	this.gl.clear(this.gl.COLOR_BUFFER_BIT);
