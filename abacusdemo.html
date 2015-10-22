@@ -13,7 +13,7 @@ hello
 hello
 </div>
 
-<img id="sky" src="abacusframe.png"></img><br>
+<img id="sky" src="sky.JPG"></img><br>
 
 <script src="SlothGL.js"></script>
 
@@ -80,14 +80,12 @@ function main(){
 	renderer.setup(canvas);
 	
 	// Clear <canvas>
-	//renderer.clear();
-	renderer.clear(0.8,0.8,0.8,1);
+	renderer.clear();
 	renderer.setFont("12px Times New Roman");
 	
-	/*
 	// Test many words
 	var vertical = 50;
-	var horiz = 50;
+	var horiz = 49;
 	for(i=0; i<vertical; i++){
 		for(j=0; j<horiz; j++){
 			// get a random word
@@ -96,21 +94,33 @@ function main(){
 			renderer.fillText(loremipsum[index], 0+j*25, 0+i*12);
 		}
 	}
-	*/
-	
-	var img = document.getElementById("sky");
-	renderer.drawImage(img, 50, 50, 50, 50);
 
 	console.log(renderer.textures.textureArray);
 	console.log(renderer.textures.canvasArray);
-
+/*	
+	// Write a word
+	renderer.fillText("text", 20, 20);
+	renderer.setFont("48px Times New Roman");
+	renderer.setColor("white");
+	renderer.fillText("cat", 200, 30);
+	renderer.setFont("24px Times New Roman");
+	renderer.setColor("red");
+	renderer.fillText("text", 20, 60);
+	console.log(renderer.textures.wordArray);
+	
+	//var img = document.getElementById("sky");
+	//renderer.drawImage(img, 50, 50, 50, 50);
+	renderer.fillText("superextralongdinosauruslongerlongerlongreallyreallyreallylonglikereallyreally long123", 20, 160);
+*/
+	// setup event handler
+	//canvas.onclick = (function(ev){click(ev,renderer,canvas)});
 	animate(renderer);
 }
 main();
 
 function draw(renderer){
 	// Clear WebGL canvas
-	renderer.clear(0.8,0.8,0.8,1);
+	renderer.clear();
 
 	renderer.gl.drawArrays(renderer.gl.TRIANGLE_STRIP, 0, 4);
 	renderer.render();
@@ -142,6 +152,54 @@ function animate(renderer){
 	requestAnimationFrame(function(){animate(renderer)});
 }
 
+function click(ev, renderer, canvas) {
+	var x = ev.clientX; // x coordinate of a mouse pointer
+	var y = ev.clientY; // y coordinate of a mouse pointer
+	var rect = ev.target.getBoundingClientRect() ;
+
+	// Get correct coordinates from bounding box
+	x = x-rect.left;
+	y = y-rect.top;
+
+	var vertices = new Float32Array([
+	// Vertex coordinates, texture coordinate
+		x,  y,
+		x,  y-10,
+		x+10,  y,
+		x+10,  y-10
+	]);
+	
+	//console.log(vertices);
+	initVertexBuffers(renderer.gl, vertices);
+}
+
+function initVertexBuffers(gl, vertices) {
+  
+  // Create a buffer object
+  var vertexBuffer = gl.createBuffer();
+  if (!vertexBuffer) {
+    console.log('Failed to create the buffer object');
+    return -1;
+  }
+
+  // Bind the buffer object to target
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+  // Write date into the buffer object
+  gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+  var a_Position = gl.getAttribLocation(gl.program, 'a_Position');
+  if (a_Position < 0) {
+    console.log('Failed to get the storage location of a_Position');
+    return -1;
+  }
+  // Assign the buffer object to a_Position variable
+  gl.vertexAttribPointer(a_Position, 2, gl.FLOAT, false, 0, 0);
+
+  // Enable the assignment to a_Position variable
+  gl.enableVertexAttribArray(a_Position);
+
+  //return n;
+}
 
 </script>
 
