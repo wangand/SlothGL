@@ -25,9 +25,14 @@ hello
 <canvas id="canvas8" width="256" height="256" style="border:1px solid #000000;"></canvas> 
 <canvas id="canvas9" width="256" height="256" style="border:1px solid #000000;"></canvas> 
 
-<script src="SlothGL.js"></script>
+<script src="SlothGL2.0.js"></script>
 
 <script>
+canvas = document.getElementById("myCanvas");
+var renderer = new SlothGL();
+renderer.setup(canvas);
+
+
 // test canvases
 canvas1 = document.getElementById("canvas1");
 canvas2 = document.getElementById("canvas2");
@@ -51,17 +56,27 @@ ctx8 = canvas8.getContext("2d");
 ctx9 = canvas9.getContext("2d");
 
 // Fill the rectangles
-ctx1.fillRect(20,20,150,100);
-ctx2.fillRect(100,150,150,100);
+fillRects("red","red", ctx1);
+fillRects("green","red", ctx2);
+fillRects("blue","red", ctx3);
+fillRects("red","green", ctx4);
+fillRects("green","green", ctx5);
+fillRects("blue","green", ctx6);
+fillRects("red","blue", ctx7);
+fillRects("green","blue", ctx8);
+fillRects("blue","blue", ctx9);
+
+// Use the renderer to draw stuff
+
 
 // This function fills rectangles with given alternating color pattern
 // Input is the first and then the second color of the rectangles
 // ctx is context
 function fillRects(first, second, ctx){
-	x = 0; // cursor x
-	y = 0; // cursor y
-	width = 12.8;
-	height = 20;
+	var x = 0; // cursor x
+	var y = 0; // cursor y
+	width = 20;
+	height = 12.8;
 	color2 = false;
 	ctx.fillStyle = first;
 	
@@ -85,9 +100,12 @@ function fillRects(first, second, ctx){
 				color2 = false;
 			}
 		}
+		// reset x
+		x = 0;
 		// move y
 		y += height;
 	}
+
 };
 
 </script>
