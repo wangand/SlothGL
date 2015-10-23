@@ -66,7 +66,39 @@ fillRects("red","blue", ctx7);
 fillRects("green","blue", ctx8);
 fillRects("blue","blue", ctx9);
 
-// Use the renderer to draw stuff
+
+
+var now, elapsed, then;
+
+function draw(){
+	renderer.clear();
+
+	// Use the renderer to draw stuff
+	renderer.test(canvas1, 0,0,100);
+	renderer.test(canvas2, 100,100,100);
+	renderer.test(canvas3, 200,200,100);
+	renderer.test(canvas4, 300,300,100);
+	renderer.test(canvas5, 400,400,100);
+	renderer.test(canvas6, 500,400,100);
+	renderer.test(canvas7, 600,400,100);
+	renderer.test(canvas8, 700,400,100);
+	renderer.test(canvas9, 800,400,100);
+};
+
+function animate(){
+	// Calculate fps
+	now = Date.now();
+	elapsed = now - then;
+	then = now;
+	document.getElementById("fps").innerHTML = "FPS: "+Math.round(1000/elapsed);
+	
+	// animate
+	draw();
+
+	requestAnimationFrame(function(){animate()});
+};
+
+animate();
 
 
 // This function fills rectangles with given alternating color pattern
