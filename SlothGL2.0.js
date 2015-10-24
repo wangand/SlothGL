@@ -246,8 +246,6 @@ SlothGL.prototype.bufferTextureCreate = function(canvas){
 		this.textureBuffers.push(texture);
 		
 		// bind to 0
-		// Flip y axis of indicated texture buffer
-		this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 0);
 		// Enable texture unit0
 		this.gl.activeTexture(this.gl.TEXTURE0);
 		// Bind the texture object to the target
@@ -277,9 +275,6 @@ SlothGL.prototype.bufferTextureCreate = function(canvas){
 		this.textureBuffers.push(texture);
 		
 		// bind to latest
-		// Flip y axis of indicated texture buffer
-		this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 0);
-		// Enable texture unit0
 		this.gl.activeTexture(lookup[length]);
 		// Bind the texture object to the target
 		this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
@@ -305,9 +300,6 @@ SlothGL.prototype.bufferTextureCreate = function(canvas){
 		// overwrite canvas
 		this.textureBuffers[0] = texture;
 		
-		// bind to 0
-		// Flip y axis of indicated texture buffer
-		this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 0);
 		// Enable texture unit0
 		this.gl.activeTexture(this.gl.TEXTURE0);
 		// Bind the texture object to the target
@@ -351,15 +343,97 @@ SlothGL.prototype.bufferTextureRender = function(texture){
 	];
 	
 	// Case 1: empty texture buffer array
-	this.textureBuffers[0] = texture;
+	if(length === 0){
+		this.textureBuffers[0] = texture;
+		// Enable correct texture unit
+		this.gl.activeTexture(lookup[0]);
+		// Bind the texture object to the target
+		this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+		this.gl.uniform1i(u_Sampler, 0);
+		return;
+	}
 	
-	// Flip y axis of indicated texture buffer
-	this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 0);
-	// Enable correct texture unit
-	this.gl.activeTexture(lookup[0]);
-	// Bind the texture object to the target
-	this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-	this.gl.uniform1i(u_Sampler, 0);
+	// Search for texture
+	for(var i=0; i<length; i++){
+		if(this.textureBuffers[i] === texture){
+			found = i;
+			break;
+		}
+	}
+	
+	// Case 2: Found texture
+	if(found !== -1){
+		// Enable correct texture unit
+		this.gl.activeTexture(lookup[found]);
+		this.gl.uniform1i(u_Sampler, found);
+		return;
+	}
+	
+	// Case 3: Texture not found
+	if(length < 8){ // Deletion not needed
+		this.textureBuffers.push(texture);
+		// Enable correct texture unit
+		this.gl.activeTexture(lookup[length]);
+		// Bind the texture object to the target
+		this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+		this.gl.uniform1i(u_Sampler, length);
+		return;
+	}
+	else{ // Deletion needed
+		this.textureBuffers[0] = texture; // overwrite
+		// Enable correct texture unit
+		this.gl.activeTexture(lookup[0]);
+		// Bind the texture object to the target
+		this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+		this.gl.uniform1i(u_Sampler, 0);
+		return;
+	}
+};
+
+// This function updates a texture and puts in buffer
+// after execution, requested texture is updated and in buffer
+SlothGL.prototype.bufferTextureUpdate = function(textureObj){
+	var texture = textureObj.texture;
+	var canvas = textureObj.canvas;
+	var length = this.textureBuffers.length;
+	var found = -1; // index of found texture -1 if not found
+	
+	// Get the storage location of u_Sampler
+	var u_Sampler = this.gl.getUniformLocation(this.gl.program, 'u_Sampler');
+	if (!u_Sampler) {
+		console.log('Failed to get the storage location of u_Sampler');
+		return false;
+	}
+	
+	// Lookup table for texture buffers
+	var lookup = [
+		this.gl.TEXTURE0,
+		this.gl.TEXTURE1,
+		this.gl.TEXTURE2,
+		this.gl.TEXTURE3,
+		this.gl.TEXTURE4,
+		this.gl.TEXTURE5,
+		this.gl.TEXTURE6,
+		this.gl.TEXTURE7
+	];
+	
+	// Case 1: empty texture buffer array
+	if(length === 0){
+		this.textureBuffers[0] = texture;
+		
+		// Flip y axis of indicated texture buffer
+		//this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 0);
+		// Enable correct texture unit
+		this.gl.activeTexture(lookup[0]);
+		// Bind the texture object to the target
+		this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+		this.gl.uniform1i(u_Sampler, 0);
+		// Set the texture parameters
+		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+		// Set the texture image
+		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGB, this.gl.RGB, this.gl.UNSIGNED_BYTE, canvas);
+		return;
+	}
 	
 	// Search for texture
 	for(var i=0; i<length; i++){
@@ -372,34 +446,45 @@ SlothGL.prototype.bufferTextureRender = function(texture){
 	// Case 2: Found texture
 	if(found !== -1){
 		// Flip y axis of indicated texture buffer
-		this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 0);
+		//this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 0);
 		// Enable correct texture unit
 		this.gl.activeTexture(lookup[found]);
-		// Bind the texture object to the target
-		this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+		// Set the texture parameters
+		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+		// Set the texture image
+		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGB, this.gl.RGB, this.gl.UNSIGNED_BYTE, canvas);
 		this.gl.uniform1i(u_Sampler, found);
+		return;
 	}
 	
 	// Case 3: Texture not found
 	if(length < 8){ // Deletion not needed
 		this.textureBuffers.push(texture);
-		// Flip y axis of indicated texture buffer
-		this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 0);
 		// Enable correct texture unit
 		this.gl.activeTexture(lookup[length]);
 		// Bind the texture object to the target
 		this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
 		this.gl.uniform1i(u_Sampler, length);
+		// Set the texture parameters
+		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+		// Set the texture image
+		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGB, this.gl.RGB, this.gl.UNSIGNED_BYTE, canvas);
+		return;
 	}
 	else{ // Deletion needed
 		this.textureBuffers[0] = texture;
 		// Flip y axis of indicated texture buffer
-		this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 0);
+		//this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 0);
 		// Enable correct texture unit
 		this.gl.activeTexture(lookup[0]);
 		// Bind the texture object to the target
 		this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
 		this.gl.uniform1i(u_Sampler, 0);
+		// Set the texture parameters
+		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+		// Set the texture image
+		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGB, this.gl.RGB, this.gl.UNSIGNED_BYTE, canvas);
+		return;
 	}
 };
 
@@ -415,9 +500,22 @@ SlothGL.prototype.drawCanvas = function(fromCanvas,x,y, length){
 	this.textures.push(myTex);
 };
 
-SlothGL.prototype.drawCanvasPart = function(canvas, x, y, fromX, fromY, toX, toY){
+SlothGL.prototype.drawCanvasPart = function(fromCanvas, x, y, fromX, fromY, width, height){
+	// Create WebGL texture
+	var texture = this.bufferTextureCreate(fromCanvas);
 	
+	// Create Texture object
+	var myTex = new Texture(fromCanvas, x, y, fromX, fromY, width, height, texture);
+	
+	// Push Texture object into textures
+	this.textures.push(myTex);
 };
+
+SlothGL.prototype.updateAll = function(){
+	for(var i=0; i<this.textures.length; i++){
+		this.bufferTextureUpdate(this.textures[i]);
+	}
+}
 
 SlothGL.prototype.render = function(){
 	// Clear the screen
@@ -431,7 +529,7 @@ SlothGL.prototype.render = function(){
 		// draw the actual quadrilateral
 		this.textures[i].render(this.gl);
 	}
-	console.log(i);
+	//console.log(i);
 };
 
 // This object holds textures and additional data
@@ -452,21 +550,19 @@ Texture.prototype.canvasToST = function(x, y){
 	var newX;
 	var newY;
 
-	// Convert from canvas to ST texture coordinates
+	// Convert from 2D canvas XY to ST texture coordinates
 	newX = x/width;
-	newY = (height-y)/height; // broken
-	//console.log(newX+" "+newY);
+	newY = y/height;
 	return [newX,newY];
 };
 
 Texture.prototype.render = function(gl){
 	this.gl = gl;
 	
-	// Calculate st coordinates of texture
-	var tex00 = this.canvasToST(this.fromX, this.fromY+this.height);
-	var tex01 = this.canvasToST(this.fromX, this.fromY);
-	var tex10 = this.canvasToST(this.fromX+this.width, this.fromY+this.height);
-	var tex11 = this.canvasToST(this.fromX+this.width, this.fromY);
+	var tex00 = this.canvasToST(this.fromX, this.fromY);
+	var tex01 = this.canvasToST(this.fromX, this.fromY+this.height);
+	var tex10 = this.canvasToST(this.fromX+this.width, this.fromY);
+	var tex11 = this.canvasToST(this.fromX+this.width, this.fromY+this.height);
 	
 	var cor00 = [this.x,this.y];
 	var cor01 = [this.x,this.y+this.height];

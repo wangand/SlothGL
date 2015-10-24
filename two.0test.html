@@ -14,6 +14,7 @@ hello
 </div>
 
 <img id="sky" src="abacusbead.PNG"></img><br>
+<input type="button" id="button" value="push" onclick="button()"><br/>
 
 <canvas id="canvas1" width="256" height="256" style="border:1px solid #000000;"></canvas> 
 <canvas id="canvas2" width="256" height="256" style="border:1px solid #000000;"></canvas> 
@@ -32,6 +33,12 @@ canvas = document.getElementById("myCanvas");
 var renderer = new SlothGL();
 renderer.setup(canvas);
 
+function button(){
+	ctx1.font="60px Georgia";
+	ctx1.fillStyle = "Green"
+	ctx1.fillText("LOREMIPSUM",5,25);
+	renderer.updateAll();
+}
 
 // test canvases
 canvas1 = document.getElementById("canvas1");
@@ -68,7 +75,8 @@ fillRects("blue","blue", ctx9);
 
 ctx1.font="30px Georgia";
 ctx1.fillStyle = "blue"
-ctx1.fillText("Hello World!",10,50);
+ctx1.fillText("Hello World!",5,25);
+ctx1.fillText("World, Hello!",20,200);
 ctx2.font="30px Georgia";
 ctx2.fillStyle = "blue"
 ctx2.fillText("Hello World!",10,50);
@@ -76,6 +84,7 @@ ctx2.fillText("Hello World!",10,50);
 var now, elapsed, then;
 
 // Ready some canvases
+/*
 renderer.drawCanvas(canvas1, 0,0,100);
 renderer.drawCanvas(canvas2, 100,100,100);
 renderer.drawCanvas(canvas3, 200,200,100);
@@ -85,6 +94,9 @@ renderer.drawCanvas(canvas6, 500,400,100);
 renderer.drawCanvas(canvas7, 600,400,100);
 renderer.drawCanvas(canvas8, 700,400,100);
 renderer.drawCanvas(canvas9, 800,400,100);
+*/
+
+renderer.drawCanvasPart(canvas1, 100, 100, 0, 0, 128, 128);
 
 function draw(){
 	renderer.render();	
@@ -104,6 +116,7 @@ function animate(){
 };
 
 animate();
+//draw();
 
 
 // This function fills rectangles with given alternating color pattern
