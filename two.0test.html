@@ -76,36 +76,18 @@ ctx2.fillText("Hello World!",10,50);
 var now, elapsed, then;
 
 // Ready some canvases
-renderer.drawCanvas2(canvas1, 0,0,100);
-renderer.drawCanvas2(canvas2, 100,100,100);
-renderer.drawCanvas2(canvas3, 200,200,100);
-renderer.drawCanvas2(canvas4, 300,300,100);
-renderer.drawCanvas2(canvas5, 400,400,100);
-renderer.drawCanvas2(canvas6, 500,400,100);
-renderer.drawCanvas2(canvas7, 600,400,100);
-renderer.drawCanvas2(canvas8, 700,400,100);
-renderer.drawCanvas2(canvas9, 800,400,100);
+renderer.drawCanvas(canvas1, 0,0,100);
+renderer.drawCanvas(canvas2, 100,100,100);
+renderer.drawCanvas(canvas3, 200,200,100);
+renderer.drawCanvas(canvas4, 300,300,100);
+renderer.drawCanvas(canvas5, 400,400,100);
+renderer.drawCanvas(canvas6, 500,400,100);
+renderer.drawCanvas(canvas7, 600,400,100);
+renderer.drawCanvas(canvas8, 700,400,100);
+renderer.drawCanvas(canvas9, 800,400,100);
 
 function draw(){
-	renderer.clear();
-	renderer.render()
-
-	// Use the renderer to draw stuff
-	/*
-	renderer.drawCanvas(canvas1, 0,0,100);
-	renderer.drawCanvas(canvas2, 100,100,100);
-	renderer.drawCanvas(canvas3, 200,200,100);
-	renderer.drawCanvas(canvas4, 300,300,100);
-	renderer.drawCanvas(canvas5, 400,400,100);
-	renderer.drawCanvas(canvas6, 500,400,100);
-	renderer.drawCanvas(canvas7, 600,400,100);
-	renderer.drawCanvas(canvas8, 700,400,100);
-	renderer.drawCanvas(canvas9, 800,400,100);
-	*/
-	//console.log(renderer.bufferTexture(canvas9));
-	
-
-	
+	renderer.render();	
 };
 
 function animate(){

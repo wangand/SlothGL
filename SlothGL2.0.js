@@ -88,10 +88,6 @@ SlothGL.prototype.setup = function(canvas){
 		return;
 	}
 	this.gl.uniformMatrix4fv(u_xformMatrix, false, this.projectionMatrix);
-	
-	// *** FOR TEXTURES ***
-	// pre-Flip the image's y axis
-	//this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 1); 
 }
 
 // This function sets the projection matrix of the SlothGL object
@@ -407,15 +403,20 @@ SlothGL.prototype.bufferTextureRender = function(texture){
 	}
 };
 
-SlothGL.prototype.drawCanvas2 = function(fromCanvas,x,y, length){
+// Create entire canvas texture
+SlothGL.prototype.drawCanvas = function(fromCanvas,x,y, length){
 	// Create WebGL texture
-	var debug = this.bufferTextureCreate(fromCanvas);
+	var texture = this.bufferTextureCreate(fromCanvas);
 	
 	// Create Texture object
-	var myTex = new Texture(fromCanvas, x, y, length, debug);
+	var myTex = new Texture(fromCanvas, x, y, 0, 0, fromCanvas.width, fromCanvas.height, texture);
 	
 	// Push Texture object into textures
 	this.textures.push(myTex);
+};
+
+SlothGL.prototype.drawCanvasPart = function(canvas, x, y, fromX, fromY, toX, toY){
+	
 };
 
 SlothGL.prototype.render = function(){
@@ -434,23 +435,51 @@ SlothGL.prototype.render = function(){
 };
 
 // This object holds textures and additional data
-Texture = function(canvas, x, y, length, texture){
+Texture = function(canvas, x, y, fromX, fromY, width, height, texture){
+	this.canvas = canvas;
 	this.x = x; // x coord to be rendered to
 	this.y = y; // y coord to be rendered to
-	this.length = length;
+	this.fromX = fromX; // x coor of texture 0,0
+	this.fromY = fromY; // y coor of texture 0,0
+ 	this.width = width; // width of texture
+	this.height = height; // height of texture
 	this.texture = texture; // Created texture
+};
+
+Texture.prototype.canvasToST = function(x, y){
+	var width = this.canvas.width;
+	var height = this.canvas.height;
+	var newX;
+	var newY;
+
+	// Convert from canvas to ST texture coordinates
+	newX = x/width;
+	newY = (height-y)/height; // broken
+	//console.log(newX+" "+newY);
+	return [newX,newY];
 };
 
 Texture.prototype.render = function(gl){
 	this.gl = gl;
+	
+	// Calculate st coordinates of texture
+	var tex00 = this.canvasToST(this.fromX, this.fromY+this.height);
+	var tex01 = this.canvasToST(this.fromX, this.fromY);
+	var tex10 = this.canvasToST(this.fromX+this.width, this.fromY+this.height);
+	var tex11 = this.canvasToST(this.fromX+this.width, this.fromY);
+	
+	var cor00 = [this.x,this.y];
+	var cor01 = [this.x,this.y+this.height];
+	var cor10 = [this.x+this.width,this.y];
+	var cor11 = [this.x+this.width,this.y+this.height];
+	
 	var verticesTexCoords = new Float32Array([
-		// Vertex coordinates, texture coordinate
-		this.x,  this.y+this.length,   0.0, 1.0,
-		this.x, this.y,   0.0, 0.0,
-		this.x+this.length,  this.y+this.length,   1.0, 1.0,
-		this.x+this.length, this.y,   1.0, 0.0,
+	// Vertex coordinates, texture coordinate
+		cor00[0],  cor00[1],   tex00[0], tex00[1],
+		cor01[0],  cor01[1],   tex01[0], tex01[1],
+		cor10[0],  cor10[1],   tex10[0], tex10[1],
+		cor11[0],  cor11[1],   tex11[0], tex11[1]
 	]);
-	var n = 4; // The number of vertices
 
 	// Buffer object already created and bound to
 	// Write date into the buffer object
@@ -478,5 +507,5 @@ Texture.prototype.render = function(gl){
 	this.gl.enableVertexAttribArray(a_TexCoord);  // Enable the assignment of the buffer object
 	
 	// Draw the rectangle with texture
-	this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, n);
+	this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
 };
