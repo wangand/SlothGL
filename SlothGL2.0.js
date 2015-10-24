@@ -28,6 +28,9 @@ SlothGL = function(){
 	// Texture buffers
 	this.textureBuffers = [];
 	
+	// Textures
+	this.textures = [];
+	
 	// Projection matrix to give 2D-canvas-like coordinates
 	// Default as identity matrix
 	this.projectionMatrix = new Float32Array([
@@ -85,6 +88,10 @@ SlothGL.prototype.setup = function(canvas){
 		return;
 	}
 	this.gl.uniformMatrix4fv(u_xformMatrix, false, this.projectionMatrix);
+	
+	// *** FOR TEXTURES ***
+	// pre-Flip the image's y axis
+	//this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 1); 
 }
 
 // This function sets the projection matrix of the SlothGL object
@@ -206,83 +213,270 @@ SlothGL.prototype.clear = function(r,b,g,a){
 	this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 }
 
-SlothGL.prototype.test = function(fromCanvas,x,y, length){
-  var verticesTexCoords = new Float32Array([
-    // Vertex coordinates, texture coordinate
-    x,  y+length,   0.0, 1.0,
-    x, y,   0.0, 0.0,
-     x+length,  y+length,   1.0, 1.0,
-     x+length, y,   1.0, 0.0,
-  ]);
-  var n = 4; // The number of vertices
+// This function handles the texture unit side of texture creation
+// after execution, returns the created and bound texture
+SlothGL.prototype.bufferTextureCreate = function(canvas){
+	var length = this.textureBuffers.length;
+	
+	// Get the storage location of u_Sampler
+	var u_Sampler = this.gl.getUniformLocation(this.gl.program, 'u_Sampler');
+	if (!u_Sampler) {
+		console.log('Failed to get the storage location of u_Sampler');
+		return false;
+	}
+	
+	// Lookup table for texture buffers
+	var lookup = [
+		this.gl.TEXTURE0,
+		this.gl.TEXTURE1,
+		this.gl.TEXTURE2,
+		this.gl.TEXTURE3,
+		this.gl.TEXTURE4,
+		this.gl.TEXTURE5,
+		this.gl.TEXTURE6,
+		this.gl.TEXTURE7
+	];
+	
+	// Case 1: no buffered texture units
+	if(length === 0){
+		// Create texture
+		var texture = this.gl.createTexture();
+		if (!texture) {
+			console.log('Failed to create the texture object');
+			return false;
+		}
+		
+		// save canvas
+		this.textureBuffers.push(texture);
+		
+		// bind to 0
+		// Flip y axis of indicated texture buffer
+		this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 0);
+		// Enable texture unit0
+		this.gl.activeTexture(this.gl.TEXTURE0);
+		// Bind the texture object to the target
+		this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
 
-	// Buffer object already created and bound to
-  // Write date into the buffer object
-  this.gl.bufferData(this.gl.ARRAY_BUFFER, verticesTexCoords, this.gl.STATIC_DRAW);
+		// Set the texture parameters
+		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+		// Set the texture image
+		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGB, this.gl.RGB, this.gl.UNSIGNED_BYTE, canvas);
 
-  // Get a_Position location
-  var FSIZE = verticesTexCoords.BYTES_PER_ELEMENT;
-  //Get the storage location of a_Position, assign and enable buffer
-  var a_Position = this.gl.getAttribLocation(this.gl.program, 'a_Position');
-  if (a_Position < 0) {
-    console.log('Failed to get the storage location of a_Position');
-    return -1;
-  }
-  this.gl.vertexAttribPointer(a_Position, 2, this.gl.FLOAT, false, FSIZE * 4, 0);
-  this.gl.enableVertexAttribArray(a_Position);  // Enable the assignment of the buffer object
+		// Set the texture unit 0 to the sampler
+		this.gl.uniform1i(u_Sampler, 0);
+		
+		return texture;
+	}
+	
+	// Case 2: less than 8 buffered texture units
+	if(length < 8){
+		// Create texture
+		var texture = this.gl.createTexture();
+		if (!texture) {
+			console.log('Failed to create the texture object');
+			return false;
+		}
+		
+		// save canvas
+		this.textureBuffers.push(texture);
+		
+		// bind to latest
+		// Flip y axis of indicated texture buffer
+		this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 0);
+		// Enable texture unit0
+		this.gl.activeTexture(lookup[length]);
+		// Bind the texture object to the target
+		this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
 
-  // Get the storage location of a_TexCoord
-  var a_TexCoord = this.gl.getAttribLocation(this.gl.program, 'a_TexCoord');
-  if (a_TexCoord < 0) {
-    console.log('Failed to get the storage location of a_TexCoord');
-    return -1;
-  }
-  // Assign the buffer object to a_TexCoord variable
-  this.gl.vertexAttribPointer(a_TexCoord, 2, this.gl.FLOAT, false, FSIZE * 4, FSIZE * 2);
-  this.gl.enableVertexAttribArray(a_TexCoord);  // Enable the assignment of the buffer object
-  
-  var texture = this.gl.createTexture();   // Create a texture object
-  if (!texture) {
-    console.log('Failed to create the texture object');
-    return false;
-  }
+		// Set the texture parameters
+		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+		// Set the texture image
+		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGB, this.gl.RGB, this.gl.UNSIGNED_BYTE, canvas);
 
-  // Get the storage location of u_Sampler
-  var u_Sampler = this.gl.getUniformLocation(this.gl.program, 'u_Sampler');
-  if (!u_Sampler) {
-    console.log('Failed to get the storage location of u_Sampler');
-    return false;
-  }
-  
-  this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 1); // Flip the image's y axis
-  // Enable texture unit0
-  this.gl.activeTexture(this.gl.TEXTURE0);
-  // Bind the texture object to the target
-  this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+		// Set the texture unit 0 to the sampler
+		this.gl.uniform1i(u_Sampler, length);
+		
+		return texture;
+	}
+	else{ // Case 3: 8 buffered texture units
+	// Create texture
+		var texture = this.gl.createTexture();
+		if (!texture) {
+			console.log('Failed to create the texture object');
+			return false;
+		}
+		
+		// overwrite canvas
+		this.textureBuffers[0] = texture;
+		
+		// bind to 0
+		// Flip y axis of indicated texture buffer
+		this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 0);
+		// Enable texture unit0
+		this.gl.activeTexture(this.gl.TEXTURE0);
+		// Bind the texture object to the target
+		this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
 
-  // Set the texture parameters
-  this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
-  // Set the texture image
-  this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGB, this.gl.RGB, this.gl.UNSIGNED_BYTE, fromCanvas);
-  
-  // Set the texture unit 0 to the sampler
-  this.gl.uniform1i(u_Sampler, 0);
+		// Set the texture parameters
+		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+		// Set the texture image
+		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGB, this.gl.RGB, this.gl.UNSIGNED_BYTE, canvas);
 
-  // Draw the rectangle
-  this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, n);
+		// Set the texture unit 0 to the sampler
+		this.gl.uniform1i(u_Sampler, 0);
+		
+		return texture;
+	}
 };
 
-SlothGL.prototype.checkTextureBuffer = function(canvas){
-	// Case: empty array
-	if(textureBuffers.length < 1){
-		textureBuffers.push(canvas);
-		return(this.gl.TEXTURE0);
-	}
-	else if(textureBuffers.length < 8){
-		return(this.gl.TEXTURE1);
-	}
-}
-
-TextureHolder = function(){
+// This function handles the texture unit side of texture rendering
+// after execution, texture param is rendered
+SlothGL.prototype.bufferTextureRender = function(texture){
+	var length = this.textureBuffers.length;
+	var found = -1; // index of found texture -1 if not found
 	
+	// Get the storage location of u_Sampler
+	var u_Sampler = this.gl.getUniformLocation(this.gl.program, 'u_Sampler');
+	if (!u_Sampler) {
+		console.log('Failed to get the storage location of u_Sampler');
+		return false;
+	}
+	
+	// Lookup table for texture buffers
+	var lookup = [
+		this.gl.TEXTURE0,
+		this.gl.TEXTURE1,
+		this.gl.TEXTURE2,
+		this.gl.TEXTURE3,
+		this.gl.TEXTURE4,
+		this.gl.TEXTURE5,
+		this.gl.TEXTURE6,
+		this.gl.TEXTURE7
+	];
+	
+	// Case 1: empty texture buffer array
+	this.textureBuffers[0] = texture;
+	
+	// Flip y axis of indicated texture buffer
+	this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 0);
+	// Enable correct texture unit
+	this.gl.activeTexture(lookup[0]);
+	// Bind the texture object to the target
+	this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+	this.gl.uniform1i(u_Sampler, 0);
+	
+	// Search for texture
+	for(var i=0; i<length; i++){
+		if(this.textureBuffers[i] === texture){
+			found = i;
+			break;
+		}
+	}
+	
+	// Case 2: Found texture
+	if(found !== -1){
+		// Flip y axis of indicated texture buffer
+		this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 0);
+		// Enable correct texture unit
+		this.gl.activeTexture(lookup[found]);
+		// Bind the texture object to the target
+		this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+		this.gl.uniform1i(u_Sampler, found);
+	}
+	
+	// Case 3: Texture not found
+	if(length < 8){ // Deletion not needed
+		this.textureBuffers.push(texture);
+		// Flip y axis of indicated texture buffer
+		this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 0);
+		// Enable correct texture unit
+		this.gl.activeTexture(lookup[length]);
+		// Bind the texture object to the target
+		this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+		this.gl.uniform1i(u_Sampler, length);
+	}
+	else{ // Deletion needed
+		this.textureBuffers[0] = texture;
+		// Flip y axis of indicated texture buffer
+		this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 0);
+		// Enable correct texture unit
+		this.gl.activeTexture(lookup[0]);
+		// Bind the texture object to the target
+		this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+		this.gl.uniform1i(u_Sampler, 0);
+	}
+};
+
+SlothGL.prototype.drawCanvas2 = function(fromCanvas,x,y, length){
+	// Create WebGL texture
+	var debug = this.bufferTextureCreate(fromCanvas);
+	
+	// Create Texture object
+	var myTex = new Texture(fromCanvas, x, y, length, debug);
+	
+	// Push Texture object into textures
+	this.textures.push(myTex);
+};
+
+SlothGL.prototype.render = function(){
+	// Clear the screen
+	this.clear();
+	
+	// Render all Textures
+	for(var i=0; i<this.textures.length; i++){
+		// Ready texture unit array for rendering
+		this.bufferTextureRender(this.textures[i].texture);
+
+		// draw the actual quadrilateral
+		this.textures[i].render(this.gl);
+	}
+	console.log(i);
+};
+
+// This object holds textures and additional data
+Texture = function(canvas, x, y, length, texture){
+	this.x = x; // x coord to be rendered to
+	this.y = y; // y coord to be rendered to
+	this.length = length;
+	this.texture = texture; // Created texture
+};
+
+Texture.prototype.render = function(gl){
+	this.gl = gl;
+	var verticesTexCoords = new Float32Array([
+		// Vertex coordinates, texture coordinate
+		this.x,  this.y+this.length,   0.0, 1.0,
+		this.x, this.y,   0.0, 0.0,
+		this.x+this.length,  this.y+this.length,   1.0, 1.0,
+		this.x+this.length, this.y,   1.0, 0.0,
+	]);
+	var n = 4; // The number of vertices
+
+	// Buffer object already created and bound to
+	// Write date into the buffer object
+	this.gl.bufferData(this.gl.ARRAY_BUFFER, verticesTexCoords, this.gl.STATIC_DRAW);
+
+	// Get a_Position location
+	var FSIZE = verticesTexCoords.BYTES_PER_ELEMENT;
+	//Get the storage location of a_Position, assign and enable buffer
+	var a_Position = this.gl.getAttribLocation(this.gl.program, 'a_Position');
+	if (a_Position < 0) {
+		console.log('Failed to get the storage location of a_Position');
+		return -1;
+	}
+	this.gl.vertexAttribPointer(a_Position, 2, this.gl.FLOAT, false, FSIZE * 4, 0);
+	this.gl.enableVertexAttribArray(a_Position);  // Enable the assignment of the buffer object
+
+	// Get the storage location of a_TexCoord
+	var a_TexCoord = this.gl.getAttribLocation(this.gl.program, 'a_TexCoord');
+	if (a_TexCoord < 0) {
+		console.log('Failed to get the storage location of a_TexCoord');
+		return -1;
+	}
+	// Assign the buffer object to a_TexCoord variable
+	this.gl.vertexAttribPointer(a_TexCoord, 2, this.gl.FLOAT, false, FSIZE * 4, FSIZE * 2);
+	this.gl.enableVertexAttribArray(a_TexCoord);  // Enable the assignment of the buffer object
+	
+	// Draw the rectangle with texture
+	this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, n);
 };
