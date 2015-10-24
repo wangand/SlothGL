@@ -14,7 +14,7 @@ hello
 </div>
 
 <img id="sky" src="abacusbead.PNG"></img><br>
-<input type="button" id="button" value="push" onclick="button()"><br/>
+<input type="button" id="button" value="update" onclick="button()"><br/>
 
 <canvas id="canvas1" width="256" height="256" style="border:1px solid #000000;"></canvas> 
 <canvas id="canvas2" width="256" height="256" style="border:1px solid #000000;"></canvas> 
@@ -83,7 +83,6 @@ ctx2.fillText("Hello World!",10,50);
 
 var now, elapsed, then;
 
-// Ready some canvases
 /*
 renderer.drawCanvas(canvas1, 0,0,100);
 renderer.drawCanvas(canvas2, 100,100,100);
@@ -96,7 +95,29 @@ renderer.drawCanvas(canvas8, 700,400,100);
 renderer.drawCanvas(canvas9, 800,400,100);
 */
 
-renderer.drawCanvasPart(canvas1, 100, 100, 0, 0, 128, 128);
+
+// Recreate canvas1 in parts
+var x = 0; // cursor x
+var y = 0; // cursor y
+width = 20;
+height = 12.8;
+color2 = false;
+
+// for each row
+while(y+height <= ctx1.canvas.height){
+	// for each column
+	while(x+width <= ctx1.canvas.width){
+		// fill rect
+		renderer.drawCanvasPart(canvas1,100+x, 100+y, x,y,width,height);
+		
+		// move x
+		x += width;
+	}
+	// reset x
+	x = 0;
+	// move y
+	y += height;
+}
 
 function draw(){
 	renderer.render();	
