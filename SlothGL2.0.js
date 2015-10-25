@@ -206,7 +206,7 @@ SlothGL.prototype.initializeShaders = function(gl, vshader, fshader){
 SlothGL.prototype.clear = function(r,b,g,a){
 	// Default Black if nothing added
 	if(r === undefined){
-		this.gl.clearColor(0, 0, 0, 1);
+		this.gl.clearColor(.2, .2, .2, 1);
 	}
 	else{ // otherwise use values given
 		this.gl.clearColor(r, g, b, 1)
@@ -582,6 +582,52 @@ SlothGL.prototype.fillText = function(text, x, y){
 	this.drawCanvasPart(latest.canvas, x, y, position[0], position[1], position[2], latest.nextY, latest.texture);
 };
 
+// This function draws an image
+SlothGL.prototype.drawImage = function(image, x, y, width, height){
+	var latest = this.canvases[this.canvases.length - 1];
+	
+	// default to full size
+	if(height === undefined){
+		width = image.clientWidth;
+		height = image.clientHeight;
+	}
+	
+	// Test Canvas
+	var testval = latest.testSize(width, height);
+	
+	// New canvas if necessary
+	if(testval === -1){
+		this.canvases.push(new SmartCanvas(this.font, this.fillColor, this.textureSize, latest.height));
+		latest = this.canvases[this.canvases.length - 1];
+		testval = 0;
+	}
+		
+	// Draw Image
+	var position = latest.drawImage(image, x, y, width, height, testval);
+	//SmartCanvas.prototype.drawImage = function(img, x, y, width, height, testval){
+	
+
+	// Create texture if necessary
+	if(latest.texture === undefined){
+		latest.texture = this.bufferTextureCreate(latest.canvas);
+		if (!latest.texture) {
+			console.log('Failed to create the texture object');
+			return false;
+		}
+	}
+	else{
+		console.log("Already texture");
+	}
+	
+	// Add texture
+	this.drawCanvasPart(latest.canvas, x, y, position[0], position[1], width, height, latest.texture);
+	
+	// Line return for ease of not overwriting
+	// *** TODO: make more efficient ***
+	latest.lastX = latest.canvas.width;
+	latest.nextY += height;
+};
+
 // This object holds textures and additional data
 Texture = function(canvas, x, y, fromX, fromY, width, height, texture){
 	this.canvas = canvas;
@@ -678,10 +724,8 @@ SmartCanvas = function(font, color, size, height){
 	document.body.appendChild(this.canvas);
 	this.canvas.height = size; // make sure size works for webgl texture
 	this.canvas.width = size;  // ie a square of power of 2
-	this.canvas.setAttribute("style", "visibility:hidden;"); // hide the canvas
-	//if(DEBUG){
-	//	this.canvas.setAttribute("style", "visibility:visible;"); // unhide the canvas
-	//}
+	this.canvas.setAttribute("style", "display:none"); // hide the canvas
+
 	// Font and alignment
 	this.font = font;
 	var ctx = this.canvas.getContext("2d");
@@ -702,10 +746,6 @@ SmartCanvas = function(font, color, size, height){
 		this.nextY = this.getFontHeight();
 	}
 	this.lineHeight = this.nextY; // used in case line shrinks
-
-	// Texture for webgl use
-	//this.texture; // don't define yet
-	this.texUpdate = false; // true if we need to retexture on word add
 }
 
 // WriteWord() writes a word to canvas in next available space
@@ -732,12 +772,71 @@ SmartCanvas.prototype.writeWord = function(text, testval){
 		this.lastX += wordWidth;
 	}
 
-	// Let renderer know this canvas has been edited since last texture
-	this.texUpdate = true;
-
 	// return [x,y] start location of text
 	return returnval;
 }
+
+// This function draws an image to the SmartCanvas
+// img is the image
+// x is the x coordinate of the image in 2D canvas coordinates
+// y is the y coordinate of the image in 2D canvas coordinates
+// width is the width of the image
+// height is the height of the image
+// testval shows how to render image to canvas
+// 	if 0: just render image
+//	if 1: render on new line
+//	if -1: create new canvas
+SmartCanvas.prototype.drawImage = function(img, x, y, width, height, testval){
+	var ctx = this.canvas.getContext("2d");
+	
+	var ctx = this.canvas.getContext("2d");
+	var returnval = [this.lastX, this.lastY];
+	// On this line
+	if(testval === 0){
+		ctx.drawImage(img, this.lastX, this.lastY, width, height);
+		this.lastX += width;
+	}
+	// On next line
+	else{
+		this.lastX = 0;
+		//this.lastY += this.nextY;
+		this.lastY += this.nextY;
+		this.nextY = height;
+		//this.nextY = this.lineHeight;
+		returnval = [this.lastX, this.lastY]; // update return val
+		ctx.drawImage(img, this.lastX, this.lastY, width, height);
+		this.lastX += width;
+	}
+
+
+	// return [x,y] start location of text
+	return returnval;
+};
+
+// This function tests if there is room on a SmartCanvas
+// give a width and height, returns:
+// -1 is a new canvas is needed
+//	1 if a newline is needed
+//	0 if item can just be rendered
+SmartCanvas.prototype.testSize = function(width, height){
+	var ctx = this.canvas.getContext("2d");
+	//New canvas needed? eg. font size change
+	if(this.canvas.height < height + this.lastY){ // is there room this line?
+		return -1; // new canvas
+	}
+
+	if((this.canvas.width - this.lastX) < width){ // new line needed?
+		if(this.canvas.height < this.lastY+ this.nextY + height){ // is there room next line?
+			return -1; // new canvas
+		}
+		else{
+			return 1; // new line
+		}
+	}
+	else{ // just write
+		return 0;
+	}
+};
 
 // This function tests if there is room for a word on the SmartCanvas
 // text is the word to be tested

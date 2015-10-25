@@ -1,0 +1,82 @@
+<html>
+<head>
+<title>Demonstrate WebGLSloth</title>
+</head>
+
+<body>
+<canvas id="myCanvas" width="1024" height="512" style="border:1px solid #000000;">
+</canvas> 
+<div id="fps">
+hello
+</div>
+<div id="infodiv">
+hello
+</div>
+
+<img id="sky" src="abacusbead.PNG"></img><br>
+<img id="frame" style="display: none" src="abacusframe.PNG"></img><br>
+<img id="rod" style="visibility: hidden" src="abacusrod.PNG"></img><br>
+<input type="button" id="button" value="update" onclick="button()"><br/>
+
+<script src="SlothGL2.0.js"></script>
+
+<script>
+canvas = document.getElementById("myCanvas");
+var renderer = new SlothGL();
+renderer.setup(canvas);
+
+function button(){
+	console.log("working");
+}
+
+// draw image
+myImage = document.getElementById("sky");
+myImage2 = document.getElementById("frame");
+myImage3 = document.getElementById("rod");
+
+
+renderer.fillText("cat", 0, 0);
+
+renderer.drawImage(myImage, 0, 0);
+for(var i = 0; i<100; i++){
+	renderer.fillText("dog", 10*i, 10*i)
+}
+for(var i = 100; i>0; i--){
+	renderer.fillText("dog", 10*i, 0)
+}
+
+for(var i=0; i< 10; i++){
+	renderer.drawImage(myImage3, 110+i*40, 50, 15,250);
+}
+renderer.drawImage(myImage2, 50, 50, 500,250);
+
+for(var i = 100; i>0; i--){
+	renderer.fillText("cat", 0, 10*i)
+}
+
+var now, then, elapsed;
+
+function draw(){
+	renderer.render();	
+};
+
+function animate(){
+	// Calculate fps
+	now = Date.now();
+	elapsed = now - then;
+	then = now;
+	document.getElementById("fps").innerHTML = "FPS: "+Math.round(1000/elapsed);
+	
+	// animate
+	draw();
+
+	requestAnimationFrame(function(){animate()});
+};
+
+animate();
+//draw();
+
+</script>
+
+</body>
+</html>
