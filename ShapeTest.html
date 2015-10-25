@@ -1,0 +1,168 @@
+<html>
+<head>
+<title>Demonstrate WebGLSloth</title>
+</head>
+
+<body>
+<canvas id="myCanvas" width="1024" height="512" style="border:1px solid #000000;">
+</canvas> 
+<div id="fps">
+hello
+</div>
+<div id="infodiv">
+hello
+</div>
+<input type="button" id="button" value="update" onclick="button()"><br/>
+<!--canvas id="test" width="512" height="512" style="border:1px solid #000000;"></canvas-->
+<!--canvas id="render" width="512" height="512" style="border:1px solid #000000;"></canvas-->
+
+
+
+<script src="SlothGL2.0.js"></script>
+
+<script>
+canvas = document.getElementById("myCanvas");
+var renderer = new SlothGL();
+renderer.setup(canvas);
+
+function button(){
+	renderPath();
+	renderpathCtx.drawImage(pathCanvas,0,0);
+}
+
+var test;
+
+// Draw some shapes
+// Similar to Canvas syntax
+renderer.fillRect(100,123, 50,50);
+
+renderer.changeFont("50px Times New Roman");
+renderer.fillText("SlothGL", 225, 125);
+
+renderer.fillStyle = "green";
+
+renderer.beginPath();
+renderer.moveTo(75,50);
+renderer.lineTo(100,75);
+renderer.lineTo(100,25);
+test = renderer.fill();
+//renderer.stroke();
+
+renderer.beginPath();
+renderer.moveTo(275,50);
+renderer.lineTo(300,75);
+renderer.lineTo(300,25);
+renderer.fill();
+
+var now, then, elapsed;
+
+function draw(){
+	renderer.render();	
+};
+
+function animate(){
+	// Calculate fps
+	now = Date.now();
+	elapsed = now - then;
+	then = now;
+	document.getElementById("fps").innerHTML = "FPS: "+Math.round(1000/elapsed);
+	
+	// animate
+	test.Tx += (Math.random()*2 -1)/100;
+	test.Ty += (Math.random()*2 -1)/100;
+	draw();
+
+	requestAnimationFrame(function(){animate()});
+};
+
+animate();
+//draw();
+
+
+/*
+// Add a hidden canvas for adding paths
+var pathArray = []; // stores commands of 1 path
+var pathWidth = 0; // width of path
+var pathHeight = 0; // height of path
+pathCanvas = document.createElement("canvas");
+document.body.appendChild(pathCanvas);
+var pathCtx = pathCanvas.getContext("2d");
+pathCanvas.setAttribute("style", "display:none"); // hide the canvas
+
+var render = document.getElementById("render");
+var renderpathCtx = render.getContext("2d");
+pathCtx.fillStyle = "red";
+
+beginPath();
+moveTo(75,50);
+lineTo(100,75);
+lineTo(100,25);
+fill();
+stroke();
+
+
+function pushRect(x,y,w,h){
+	var anon = 	function(){
+		pathCtx.fillRect(x,y,w,h);
+	};
+	pathArray.push(anon);
+	pathWidth = pathWidth < x+w ? x+w : pathWidth;
+	pathHeight = pathHeight < y+h ? y+h : pathHeight;
+}
+
+function beginPath(){
+	// Start over
+	pathArray = [];
+	pathCtx.beginPath();
+}
+
+function moveTo(x,y){
+	var anon = 	function(){
+		pathCtx.moveTo(x,y);
+	};
+	pathArray.push(anon);
+	pathWidth = pathWidth < x ? x : pathWidth;
+	pathHeight = pathHeight < y ? y : pathHeight;
+}
+
+function lineTo(x,y){
+	var anon = 	function(){
+		pathCtx.lineTo(x,y);
+	};
+	pathArray.push(anon);
+	pathWidth = pathWidth < x ? x : pathWidth;
+	pathHeight = pathHeight < y ? y : pathHeight;
+}
+
+function stroke(){
+	var anon = 	function(){
+		pathCtx.stroke();
+	};
+	pathArray.push(anon);
+	renderPath();
+};
+
+function fill(){
+	var anon = 	function(){
+		pathCtx.fill();
+	};
+	pathArray.push(anon);
+	renderPath();
+};
+
+function renderPath(){
+	pathCanvas.width = pathWidth;
+	pathCanvas.height = pathHeight;
+	pathCtx.fillStyle = "red";
+	pathCtx.strokeStyle = "black";
+	pathCtx.lineWidth = 5;
+	for(var i=0; i<pathArray.length; i++){
+		pathArray[i]();
+	}
+	console.log(pathWidth, pathHeight);
+}
+*/
+</script>
+
+</body>
+</html>

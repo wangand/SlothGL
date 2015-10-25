@@ -29,14 +29,26 @@ SlothGL = function(){
 	this.textureSize = 1024;
 	this.canvases = [];
 	this.font = "12px Times New Roman";
-	this.fillColor = "red";
-	this.canvases.push(new SmartCanvas(this.font, this.fillColor, this.textureSize));
+	this.fillStyle = "red";
+	this.strokeStyle = "#black";
+	this.lineWidth = 5;
+	this.canvases.push(new SmartCanvas(this.font, this.fillStyle, this.textureSize));
 
-	// Texture buffers
+	// Texture buffers (ie gl.TEXTURE0 - gl.TEXTURE7)
 	this.textureBuffers = [];
 	
 	// Textures
 	this.textures = [];
+	
+	// Path handling
+	// Add a hidden canvas for adding paths
+	this.pathArray = []; // stores commands of 1 path
+	this.pathWidth = 0; // width of path
+	this.pathHeight = 0; // height of path
+	this.pathCanvas = document.createElement("canvas");
+	document.body.appendChild(this.pathCanvas);
+	this.pathCtx = this.pathCanvas.getContext("2d");
+	this.pathCanvas.setAttribute("style", "display:none"); // hide the canvas
 	
 	// Projection matrix to give 2D-canvas-like coordinates
 	// Default as identity matrix
@@ -521,6 +533,9 @@ SlothGL.prototype.drawCanvasPart = function(fromCanvas, x, y, fromX, fromY, widt
 	
 	// Push Texture object into textures
 	this.textures.push(myTex);
+	
+	// Return the texture
+	return myTex;
 };
 
 SlothGL.prototype.updateAll = function(){
@@ -558,7 +573,7 @@ SlothGL.prototype.fillText = function(text, x, y){
 	
 	// new canvas if necessary
 	if(testval === -1){
-		this.canvases.push(new SmartCanvas(this.font, this.fillColor, this.textureSize, latest.height));
+		this.canvases.push(new SmartCanvas(this.font, this.fillStyle, this.textureSize, latest.height));
 		latest = this.canvases[this.canvases.length - 1];
 		testval = 0;
 	}
@@ -579,10 +594,11 @@ SlothGL.prototype.fillText = function(text, x, y){
 	}
 	
 	// Add texture
-	this.drawCanvasPart(latest.canvas, x, y, position[0], position[1], position[2], latest.nextY, latest.texture);
+	return this.drawCanvasPart(latest.canvas, x, y, position[0], position[1], position[2], latest.nextY, latest.texture);
 };
 
 // This function draws an image
+// Return a handle to the texture object
 SlothGL.prototype.drawImage = function(image, x, y, width, height){
 	var latest = this.canvases[this.canvases.length - 1];
 	
@@ -597,7 +613,7 @@ SlothGL.prototype.drawImage = function(image, x, y, width, height){
 	
 	// New canvas if necessary
 	if(testval === -1){
-		this.canvases.push(new SmartCanvas(this.font, this.fillColor, this.textureSize, latest.height));
+		this.canvases.push(new SmartCanvas(this.font, this.fillStyle, this.textureSize, latest.height));
 		latest = this.canvases[this.canvases.length - 1];
 		testval = 0;
 	}
@@ -620,13 +636,141 @@ SlothGL.prototype.drawImage = function(image, x, y, width, height){
 	}
 	
 	// Add texture
-	this.drawCanvasPart(latest.canvas, x, y, position[0], position[1], width, height, latest.texture);
+	var ret = this.drawCanvasPart(latest.canvas, x, y, position[0], position[1], width, height, latest.texture);
 	
 	// Line return for ease of not overwriting
 	// *** TODO: make more efficient ***
 	latest.lastX = latest.canvas.width;
 	latest.nextY += height;
+	
+	return ret;
 };
+
+// This fills in an rectangle
+SlothGL.prototype.fillRect = function(x, y, width, height){
+	var latest = this.canvases[this.canvases.length - 1];
+	
+	// default to full size
+	if(height === undefined){
+		width = image.clientWidth;
+		height = image.clientHeight;
+	}
+	
+	// Test Canvas
+	var testval = latest.testSize(width, height);
+	
+	// New canvas if necessary
+	if(testval === -1){
+		this.canvases.push(new SmartCanvas(this.font, this.fillStyle, this.textureSize, latest.height));
+		latest = this.canvases[this.canvases.length - 1];
+		testval = 0;
+	}
+		
+	// Draw Rect
+	var position = latest.drawRect(width, height, testval);
+	
+	
+
+	// Create texture if necessary
+	if(latest.texture === undefined){
+		latest.texture = this.bufferTextureCreate(latest.canvas);
+		if (!latest.texture) {
+			console.log('Failed to create the texture object');
+			return false;
+		}
+	}
+	else{
+		console.log("Already texture");
+	}
+	
+	// Add texture
+	var ret = this.drawCanvasPart(latest.canvas, x, y, position[0], position[1], width, height, latest.texture);
+	
+	// Line return for ease of not overwriting
+	// *** TODO: make more efficient ***
+	latest.lastX = latest.canvas.width;
+	latest.nextY += height;
+	
+	return ret;
+};
+
+// These functions are for path rendering
+SlothGL.prototype.beginPath = function(){
+	// Start over
+	this.pathWidth = 0;
+	this.pathHeight = 0;
+	this.pathArray = [];
+	this.pathCtx.beginPath();
+}
+
+SlothGL.prototype.moveTo = function(x,y){
+	var pathCtx = this.pathCtx;
+	var anon = 	function(){
+		pathCtx.moveTo(x,y);
+	};
+	this.pathArray.push(anon);
+	this.pathWidth = this.pathWidth < x ? x : this.pathWidth;
+	this.pathHeight = this.pathHeight < y ? y : this.pathHeight;
+}
+
+SlothGL.prototype.lineTo = function(x,y){
+	var pathCtx = this.pathCtx;
+	var anon = 	function(){
+		pathCtx.lineTo(x,y);
+	};
+	this.pathArray.push(anon);
+	this.pathWidth = this.pathWidth < x ? x : this.pathWidth;
+	this.pathHeight = this.pathHeight < y ? y : this.pathHeight;
+}
+
+// Stroke path return handle to texture object
+SlothGL.prototype.stroke = function(){
+	var pathCtx = this.pathCtx;
+	var anon = 	function(){
+		pathCtx.stroke();
+	};
+	this.pathArray.push(anon);
+	
+	// Add room for the stroke
+	this.pathWidth += this.lineWidth/2;
+	this.pathHeight += this.lineWidth/2;
+	
+	// draw
+	return this.renderPath();
+
+};
+
+// Fill path return handle to texture object
+SlothGL.prototype.fill = function(){
+	
+	var pathCtx = this.pathCtx;
+	var anon = 	function(){
+		pathCtx.fill();
+	};
+	this.pathArray.push(anon);
+	
+	// draw
+	return this.renderPath();
+};
+
+// This function actually renders a specified path
+SlothGL.prototype.renderPath = function(){
+	// Ready the pathCanvas
+	this.pathCanvas.width = this.pathWidth;
+	this.pathCanvas.height = this.pathHeight;
+	this.pathCtx.fillStyle = this.fillStyle;
+	this.pathCtx.lineWidth = this.lineWidth;
+	this.pathCtx.strokeStyle = this.strokeStyle;
+	
+	// Execute all drawing functions
+	for(var i=0; i<this.pathArray.length; i++){
+		this.pathArray[i]();
+	}
+	console.log(this.pathWidth, this.pathHeight);
+	
+	// Send to texture
+	return this.drawImage(this.pathCanvas, 0, 0, this.pathWidth, this.pathHeight);
+}
 
 // This object holds textures and additional data
 Texture = function(canvas, x, y, fromX, fromY, width, height, texture){
@@ -805,6 +949,38 @@ SmartCanvas.prototype.drawImage = function(img, x, y, width, height, testval){
 		//this.nextY = this.lineHeight;
 		returnval = [this.lastX, this.lastY]; // update return val
 		ctx.drawImage(img, this.lastX, this.lastY, width, height);
+		this.lastX += width;
+	}
+
+
+	// return [x,y] start location of text
+	return returnval;
+};
+
+// This function draws a Rect to the SmartCanvas
+// width is width of rect
+// height is height of rect
+// testval shows how to render image to canvas
+// 	if 0: just render image
+//	if 1: render on new line
+//	if -1: create new canvas
+SmartCanvas.prototype.drawRect = function(width, height, testval){
+	var ctx = this.canvas.getContext("2d");
+	var returnval = [this.lastX, this.lastY];
+	// On this line
+	if(testval === 0){
+		ctx.fillRect(this.lastX, this.lastY, width, height);
+		this.lastX += width;
+	}
+	// On next line
+	else{
+		this.lastX = 0;
+		//this.lastY += this.nextY;
+		this.lastY += this.nextY;
+		this.nextY = height;
+		//this.nextY = this.lineHeight;
+		returnval = [this.lastX, this.lastY]; // update return val
+		ctx.fillRect(this.lastX, this.lastY, width, height);
 		this.lastX += width;
 	}
 
