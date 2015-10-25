@@ -2,9 +2,9 @@
 WebGL for the Lazy
 
 ## Currently supporting:
-text rendering
-2D image rendering
-path drawing
+*text rendering
+*2D image rendering
+*path drawing
 
 ## To use
 ###Import SlothGL2.0.js
