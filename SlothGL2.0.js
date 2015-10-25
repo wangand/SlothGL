@@ -25,6 +25,13 @@ SlothGL = function(){
 	// WebGL program
 	this.gl;
 	
+	// Smart canvases
+	this.textureSize = 1024;
+	this.canvases = [];
+	this.font = "12px Times New Roman";
+	this.fillColor = "red";
+	this.canvases.push(new SmartCanvas(this.font, this.fillColor, this.textureSize));
+
 	// Texture buffers
 	this.textureBuffers = [];
 	
@@ -209,6 +216,11 @@ SlothGL.prototype.clear = function(r,b,g,a){
 	this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 }
 
+SlothGL.prototype.changeFont = function(font){
+	this.font = font;
+	this.canvases[this.canvases.length - 1].changeFont(font);
+}
+
 // This function handles the texture unit side of texture creation
 // after execution, returns the created and bound texture
 SlothGL.prototype.bufferTextureCreate = function(canvas){
@@ -254,7 +266,7 @@ SlothGL.prototype.bufferTextureCreate = function(canvas){
 		// Set the texture parameters
 		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
 		// Set the texture image
-		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGB, this.gl.RGB, this.gl.UNSIGNED_BYTE, canvas);
+		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
 
 		// Set the texture unit 0 to the sampler
 		this.gl.uniform1i(u_Sampler, 0);
@@ -282,7 +294,7 @@ SlothGL.prototype.bufferTextureCreate = function(canvas){
 		// Set the texture parameters
 		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
 		// Set the texture image
-		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGB, this.gl.RGB, this.gl.UNSIGNED_BYTE, canvas);
+		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
 
 		// Set the texture unit 0 to the sampler
 		this.gl.uniform1i(u_Sampler, length);
@@ -308,7 +320,7 @@ SlothGL.prototype.bufferTextureCreate = function(canvas){
 		// Set the texture parameters
 		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
 		// Set the texture image
-		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGB, this.gl.RGB, this.gl.UNSIGNED_BYTE, canvas);
+		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
 
 		// Set the texture unit 0 to the sampler
 		this.gl.uniform1i(u_Sampler, 0);
@@ -431,7 +443,7 @@ SlothGL.prototype.bufferTextureUpdate = function(textureObj){
 		// Set the texture parameters
 		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
 		// Set the texture image
-		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGB, this.gl.RGB, this.gl.UNSIGNED_BYTE, canvas);
+		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
 		return;
 	}
 	
@@ -452,7 +464,7 @@ SlothGL.prototype.bufferTextureUpdate = function(textureObj){
 		// Set the texture parameters
 		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
 		// Set the texture image
-		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGB, this.gl.RGB, this.gl.UNSIGNED_BYTE, canvas);
+		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
 		this.gl.uniform1i(u_Sampler, found);
 		return;
 	}
@@ -468,7 +480,7 @@ SlothGL.prototype.bufferTextureUpdate = function(textureObj){
 		// Set the texture parameters
 		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
 		// Set the texture image
-		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGB, this.gl.RGB, this.gl.UNSIGNED_BYTE, canvas);
+		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
 		return;
 	}
 	else{ // Deletion needed
@@ -483,7 +495,7 @@ SlothGL.prototype.bufferTextureUpdate = function(textureObj){
 		// Set the texture parameters
 		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
 		// Set the texture image
-		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGB, this.gl.RGB, this.gl.UNSIGNED_BYTE, canvas);
+		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
 		return;
 	}
 };
@@ -500,12 +512,12 @@ SlothGL.prototype.drawCanvas = function(fromCanvas,x,y, length){
 	this.textures.push(myTex);
 };
 
-SlothGL.prototype.drawCanvasPart = function(fromCanvas, x, y, fromX, fromY, width, height){
-	// Create WebGL texture
-	var texture = this.bufferTextureCreate(fromCanvas);
-	
+SlothGL.prototype.drawCanvasPart = function(fromCanvas, x, y, fromX, fromY, width, height, texture){
 	// Create Texture object
 	var myTex = new Texture(fromCanvas, x, y, fromX, fromY, width, height, texture);
+	
+	// Mark for updating
+	myTex.updated = false;
 	
 	// Push Texture object into textures
 	this.textures.push(myTex);
@@ -523,6 +535,12 @@ SlothGL.prototype.render = function(){
 	
 	// Render all Textures
 	for(var i=0; i<this.textures.length; i++){
+		// update if needed
+		if(this.textures[i].updated === false){
+			this.bufferTextureUpdate(this.textures[i]);
+			this.textures[i].updated = true;
+		}
+		
 		// Ready texture unit array for rendering
 		this.bufferTextureRender(this.textures[i].texture);
 
@@ -530,6 +548,38 @@ SlothGL.prototype.render = function(){
 		this.textures[i].render(this.gl);
 	}
 	//console.log(i);
+};
+
+SlothGL.prototype.fillText = function(text, x, y){
+	var latest = this.canvases[this.canvases.length - 1];
+	
+	// Test canvas
+	var testval = latest.testWord(text);
+	
+	// new canvas if necessary
+	if(testval === -1){
+		this.canvases.push(new SmartCanvas(this.font, this.fillColor, this.textureSize, latest.height));
+		latest = this.canvases[this.canvases.length - 1];
+		testval = 0;
+	}
+	
+	// Write word on smartCanvas
+	var position = latest.writeWord(text, testval);
+	
+	// Create texture if necessary
+	if(latest.texture === undefined){
+		latest.texture = this.bufferTextureCreate(latest.canvas);
+		if (!latest.texture) {
+			console.log('Failed to create the texture object');
+			return false;
+		}
+	}
+	else{
+		console.log("Already texture");
+	}
+	
+	// Add texture
+	this.drawCanvasPart(latest.canvas, x, y, position[0], position[1], position[2], latest.nextY, latest.texture);
 };
 
 // This object holds textures and additional data
@@ -542,6 +592,9 @@ Texture = function(canvas, x, y, fromX, fromY, width, height, texture){
  	this.width = width; // width of texture
 	this.height = height; // height of texture
 	this.texture = texture; // Created texture
+	this.Tx = 0.0;
+	this.Ty = 0.0;
+	this.updated = false;
 };
 
 Texture.prototype.canvasToST = function(x, y){
@@ -602,6 +655,169 @@ Texture.prototype.render = function(gl){
 	this.gl.vertexAttribPointer(a_TexCoord, 2, this.gl.FLOAT, false, FSIZE * 4, FSIZE * 2);
 	this.gl.enableVertexAttribArray(a_TexCoord);  // Enable the assignment of the buffer object
 	
+	// Pass the translation distance to the vertex shader
+	 var u_Translation = gl.getUniformLocation(gl.program, 'u_Translation');
+	 if (!u_Translation) {
+		console.log('Failed to get the storage location of u_Translation');
+		return;
+	 }
+	 gl.uniform4f(u_Translation, this.Tx, this.Ty, 0.0, 0.0);
+	
 	// Draw the rectangle with texture
 	this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
 };
+
+// This object is a canvas with additional data for stacking textures
+// font is the default font for text rendering
+// color is text color
+// size is the size of the square canvas
+// height is the default line height
+SmartCanvas = function(font, color, size, height){
+	// Add new hidden canvas element
+	this.canvas = document.createElement("canvas");
+	document.body.appendChild(this.canvas);
+	this.canvas.height = size; // make sure size works for webgl texture
+	this.canvas.width = size;  // ie a square of power of 2
+	this.canvas.setAttribute("style", "visibility:hidden;"); // hide the canvas
+	//if(DEBUG){
+	//	this.canvas.setAttribute("style", "visibility:visible;"); // unhide the canvas
+	//}
+	// Font and alignment
+	this.font = font;
+	var ctx = this.canvas.getContext("2d");
+	ctx.textBaseline="top"; //*** CRUCIAL CODE *** makes alignment standard
+	ctx.font = font; // set canvas to start with this font
+	this.color = color;
+	ctx.fillStyle = this.color;
+
+	// Keep track of text locations
+	// Start at top left corner and work our way down
+	this.lastX = 0;
+	this.lastY = 0;
+	// If height is defined, we already know height of line
+	if(height != undefined){
+		this.nextY = height;
+	}
+	else{ // otherwise calculate it
+		this.nextY = this.getFontHeight();
+	}
+	this.lineHeight = this.nextY; // used in case line shrinks
+
+	// Texture for webgl use
+	//this.texture; // don't define yet
+	this.texUpdate = false; // true if we need to retexture on word add
+}
+
+// WriteWord() writes a word to canvas in next available space
+// returns canvas coordinates the word is located [x, y]
+// To find quadrilateral: width, height, lastX, nextY
+SmartCanvas.prototype.writeWord = function(text, testval){
+	var ctx = this.canvas.getContext("2d");
+	var wordWidth = ctx.measureText(text).width;
+	var returnval = [this.lastX, this.lastY, wordWidth];
+	// On this line
+	if(testval === 0){
+		ctx.fillText(text, this.lastX, this.lastY);
+		this.lastX += wordWidth;
+	}
+	// On next line
+	else{
+		this.lastX = 0;
+		//this.lastY += this.nextY;
+		this.lastY += this.nextY;
+		this.nextY = this.lineHeight;
+		//this.nextY = this.lineHeight;
+		returnval = [this.lastX, this.lastY, wordWidth]; // update return val
+		ctx.fillText(text, this.lastX, this.lastY);
+		this.lastX += wordWidth;
+	}
+
+	// Let renderer know this canvas has been edited since last texture
+	this.texUpdate = true;
+
+	// return [x,y] start location of text
+	return returnval;
+}
+
+// This function tests if there is room for a word on the SmartCanvas
+// text is the word to be tested
+// returns -1 is a new canvas is needed
+//	1 if a newline is needed
+//	0 if can just be rendered
+SmartCanvas.prototype.testWord = function(text){
+	var ctx = this.canvas.getContext("2d");
+	//New canvas needed? eg. font size change
+	if(this.canvas.height < this.nextY + this.lastY){ // is there room this line?
+		return -1; // new canvas
+	}
+
+	if((this.canvas.width - this.lastX) < ctx.measureText(text).width){ // new line needed?
+		if(this.canvas.height < this.lastY+ this.nextY + this.nextY){ // is there room next line?
+			return -1; // new canvas
+		}
+		else{
+			return 1; // new line
+		}
+	}
+	else{ // just write
+		return 0;
+	}
+}
+
+//		getFontHeight() gets height of font when font is changed
+// Adapted from this stackoverflow answer by Michaelangelo:
+//http://stackoverflow.com/questions/11452022/measure-text-height-on-an-html5-canvas-element
+// 1) create div with word and font used in canvas
+// 2) measure div
+// 3) remove div
+SmartCanvas.prototype.getFontHeight = function(){
+	//console.log("getfontheight: "+this.font);
+	var div = document.createElement("div");
+	div.style.position = 'absolute'; // required for making div start out small as possible
+	//div.style.left = '-999px';
+	//div.style.top = '-999px';
+	div.innerHTML = "Hg"; // High and Low letters. Also mercury.
+	//var ctx = this.canvas.getContext("2d");
+	var font = "font: "+this.font+";";
+	div.setAttribute("style", font);
+	document.body.appendChild(div);
+	var size = [div.offsetWidth, div.offsetHeight]; // keep this in case width is needed later
+	document.body.removeChild(div);
+	return size[1];
+}
+
+// This function changes the font of a SmartCanvas
+// font is the font to be changed
+// This function changes the font and then updates info of the SmartCanvas
+// Makes sure the height info stays correct once font is changed
+SmartCanvas.prototype.changeFont = function(font){
+	//console.log("changefont: "+font);
+	this.font = font;
+	var ctx = this.canvas.getContext("2d");
+	ctx.textBaseline="top"; //*** CRUCIAL CODE *** makes alignment standard
+	ctx.font = font;
+
+	// Make sure to update nextY if font size is smaller
+	var tempHeight = this.getFontHeight();
+	this.lineHeight = tempHeight;
+	if(this.nextY < tempHeight){
+		this.nextY = tempHeight;
+	}
+}
+
+// This function changes the text color of a SmartCanvas
+// color is the color to be changed to
+SmartCanvas.prototype.changeColor = function(color){
+	var ctx = this.canvas.getContext("2d");
+	ctx.fillStyle = color;
+}
+
+// This function returns the font of a SmartCanvas
+SmartCanvas.prototype.returnFont = function(){
+	return(this.font);
+}
+
+// This function returns the text color of a SmartCanvas
+SmartCanvas.prototype.returnColor = function(){
+	return(this.canvas.getContext("2d").fillStyle);
+}

@@ -1,0 +1,101 @@
+<html>
+<head>
+<title>Demonstrate SlothGL</title>
+<style>
+canvas{
+	border: 1px solid #000000;
+	visibility: visible;
+}
+</style>
+</head>
+
+<body>
+<canvas id="myCanvas" width="1024" height="512" style="border:1px solid #000000;">
+</canvas> 
+<div id="fps">
+hello
+</div>
+<div id="infodiv">
+hello
+</div>
+
+<input type="button" id="button" value="Animate" onclick="button()"><br/>
+
+<script src="SlothGL2.0.js"></script>
+
+<script>
+var animation = false;
+canvas = document.getElementById("myCanvas");
+var renderer = new SlothGL();
+renderer.setup(canvas);
+
+function button(){
+	if(animation === false){
+		animation = true;
+	}
+	else{
+		animation = false;
+	}
+}
+
+// Random words
+var loremipsum = [
+	"Lorem", "ipsum", "dolor", "sit", "amet,", "consectetur", "adipiscing", "elit,", "sed do",
+	"eiusmod", "tempor", "incididunt", "ut", "labore", "et", "dolore", "magna", "aliqua.", "Ut enim", "ad", "minim",
+	"veniam,", "quis", "nostrud", "exercitation", "ullamco", "laboris", "nisi", "ut", "aliquip", "ex ea", "commodo", "consequat.",
+	"Duis", "aute", "irure", "dolor", "in", "reprehenderit", "in", "voluptate", "velit", "esse", "cillum", "dolore", "eu",
+	"fugiat", "nulla", "pariatur.", "Excepteur", "sint", "occaecat", "cupidatat", "non", "proident,", "sunt", "in", "culpa", 
+	"qui", "officia", "deserunt", "mollit", "anim", "id est", "laborum.",
+	"123", "456", "789", "0!@#"
+];
+
+renderer.changeFont("12px Times New Roman");
+
+// Test many words
+	var vertical = 50;
+	var horiz = 50;
+	var horizModifier = 25;
+	var verticalModifier = horizModifier/2.5;
+	for(i=0; i<vertical; i++){
+		for(j=0; j<horiz; j++){
+			// get a random word
+			index = Math.floor(Math.random()*loremipsum.length);
+			renderer.fillText(loremipsum[index], 0+j*horizModifier, 0+i*verticalModifier);
+		}
+	}
+
+var now, elapsed, then;
+
+function draw(){
+
+	if(animation === true){
+		for(var i=0; i<renderer.textures.length; i++){
+			renderer.textures[i].Tx += (Math.random()*2 -1)/100;
+			renderer.textures[i].Ty += (Math.random()*2 -1)/100;
+		}
+	}
+	renderer.render();
+};
+
+function animate(){
+	// Calculate fps
+	now = Date.now();
+	elapsed = now - then;
+	then = now;
+	document.getElementById("fps").innerHTML = "FPS: "+Math.round(1000/elapsed);
+	
+	//animate
+	draw();
+
+
+	requestAnimationFrame(function(){animate()});
+};
+
+animate();
+//draw();
+
+
+</script>
+
+</body>
+</html>
