@@ -1080,6 +1080,12 @@ SmartCanvas.prototype.changeFont = function(font){
 	}
 }
 
+SlothGL.prototype.changeColor = function(color){
+	this.fillStyle = color;
+	ctx = this.canvases[this.canvases.length -1].canvas.getContext("2d");
+	ctx.fillStyle = color;
+}
+
 // This function changes the text color of a SmartCanvas
 // color is the color to be changed to
 SmartCanvas.prototype.changeColor = function(color){

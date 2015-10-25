@@ -36,21 +36,22 @@ var test;
 // Similar to Canvas syntax
 renderer.fillRect(100,123, 50,50);
 
+renderer.changeColor("white");
 renderer.changeFont("50px Times New Roman");
-renderer.fillText("SlothGL", 225, 125);
+renderer.fillText("WebGL", 225, 125);
 
-renderer.fillStyle = "green";
-
+renderer.changeColor("green");
 renderer.beginPath();
-renderer.moveTo(75,50);
-renderer.lineTo(100,75);
-renderer.lineTo(100,25);
-test = renderer.fill();
-//renderer.stroke();
+renderer.moveTo(575,250);
+renderer.lineTo(600,275);
+renderer.lineTo(600,225);
+test = renderer.fill(); // save triangle to animate
 
+renderer.changeColor("blue");
 renderer.beginPath();
 renderer.moveTo(275,50);
 renderer.lineTo(300,75);
+renderer.lineTo(325,50);
 renderer.lineTo(300,25);
 renderer.fill();
 
@@ -67,7 +68,7 @@ function animate(){
 	then = now;
 	document.getElementById("fps").innerHTML = "FPS: "+Math.round(1000/elapsed);
 	
-	// animate
+	// animate one triangle
 	test.Tx += (Math.random()*2 -1)/100;
 	test.Ty += (Math.random()*2 -1)/100;
 	draw();
