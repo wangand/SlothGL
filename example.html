@@ -1,0 +1,29 @@
+<html>
+<head>
+<title>Demonstrate SlothGL</title>
+</head>
+
+<body>
+<canvas id="myCanvas" width="1024" height="512" style="border:1px solid #000000;">
+</canvas> 
+
+<script src="SlothGL2.0.js"></script>
+
+<script>
+// Setup
+canvas = document.getElementById("myCanvas");
+var renderer = new SlothGL();
+renderer.setup(canvas);
+
+// Draw
+renderer.changeFont("50px Arial");
+renderer.changeColor("white");
+renderer.fillText("Hello, World", 0, 0);
+
+// Render
+renderer.render();
+
+</script>
+
+</body>
+</html>
