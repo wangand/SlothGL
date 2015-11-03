@@ -1,0 +1,778 @@
+ <canvas id="myCanvas" width="512" height="512" style="border:1px solid #000000;">
+</canvas> 
+<div id="fps">
+hello
+</div>
+ <select id="selection">
+  <option value="lines">lines</option>
+  <option value="line_strip">line strip</option>
+  <option value="line_loop">line loop</option>
+  <option value="triangles" selected="selected">triangles</option>
+	<option value="triangle_strip">triangle strip</option>
+	<option value="triangle_fan">triangle fan</option>
+</select>
+<input id="slider1" type="range" min="-1" max="1" step=".01" oninput="xslider()" />X
+<input id="slider2" type="range" min="-1" max="1" step=".01" oninput="yslider()" />Y
+<input id="slider3" type="range" min="-360" max="360" step="1" oninput="angleslider()" />angle
+<input id="slider4" type="range" min="-10" max="10" step="0.1" oninput="scaleslider()" />XScale
+<br/>
+<form>
+	<input type="radio" name="order" id="TRS" value="TRS" checked>Translate * Rotate * Scale
+	<br/>
+	<input type="radio" name="order" id="TSR" value="TSR" >Translate * Scale * Rotate
+	<br/>
+	<input type="radio" name="order" id="RTS" value="RTS" >Rotate * Translate * Scale
+	<br/>
+	<input type="radio" name="order" id="RST" value="RST" >Rotate * Scale * Translate
+	<br/>
+	<input type="radio" name="order" id="STR" value="STR" >Scale * Translate * Rotate
+	<br/>
+	<input type="radio" name="order" id="SRT" value="SRT" >Scale * Rotate * Translate
+</form>
+<input type="button" value="Reset Transformations" onclick="reset()">
+
+<script>
+
+// I don't know why but the matrix transformation support class must be put at the top to work
+// Andrew's Matrix transformation support class
+var TransformMatrix = function(){
+  this.tempArray; // used for matrix multiplications
+  this.floatArray; // used to pass values to webgl
+};
+
+// Returns a JS array that is column major form of A*B
+// Requires two JS arrays of 4x4 arrays in column major form
+TransformMatrix.prototype.MatrixMultiply = function(A, B){
+	if(A.length !== 16 || B.length!== 16){
+		console.log("Fatal error in matrix multiplication");
+		return;
+	}
+	
+	var a1,b1,c1,d1,a2,b2,c2,d2; // current rows/columns for inner product
+	var temp; // value after each inner product
+	var result = []; // stores the result as a 1D js array of length 16
+
+	for(i=0; i<16; i++){
+		// Matrix A is columns 4 per row
+		a1 = i%4;
+		b1 = a1+4;
+		c1 = b1+4;
+		d1 = c1+4;
+		
+		// Matrix B is rows same per 4 columns
+		a2 = Math.floor(i/4)*4;
+		b2 = a2+1;
+		c2 = b2+1;
+		d2 = c2+1;
+		//console.log(a1+" "+b1+" "+c1+" "+d1);
+		//console.log(a2+" "+b2+" "+c2+" "+d2);
+		
+		//a1a2+b1b2+c1c2+d1d2 is inner product
+		temp = A[a1]*B[a2]+A[b1]*B[b2]+A[c1]*B[c2]+A[d1]*B[d2];
+		
+		result.push(temp);
+	}
+
+	return result;
+}
+
+TransformMatrix.prototype.CreateTranslation = function(Tx, Ty, Tz){
+	this.tempArray = [
+      1.0,  0.0, 0.0, 0.0,
+      0.0,  1.0, 0.0, 0.0,
+      0.0,  0.0, 1.0, 0.0,
+      Tx,  Ty, Tz, 1.0
+	];
+	this.floatArray = new Float32Array(this.tempArray);
+};
+
+TransformMatrix.prototype.Create2DRotation = function(angle){
+	// convert to radians
+	var radians = angle * (Math.PI/180);
+	var cosb = Math.cos(radians);
+	var sinb = Math.sin(radians);
+
+// Just for future reference if necessary
+	// Formula for 2D rotation about z axis
+	// Trigonometric addition formulas
+	// cos(a+b) = cos(a)cos(b) - sin(a)sin(b)
+	// sin(a+b) = sin(a)cos(b) + sin(b)cos(a)
+	// l = length of vector
+	// a = original angle
+	// b = new angle
+	// x = l*cos(a)       from observation (draw a chart)
+	// y = l*sin(a)       from observation
+	// x' = l*cos(a+b)    from observation
+	// y' = l*sin(a+b)    from observation
+	// x':
+	// x' = l*(cos(a)cos(b) - sin(a)sin(b))    addition formula
+	// x' = l*cos(a)cos(b) - l*sin(a)sin(b)    distributive property
+	// x' = x*cos(b) - y*sin(b)                  substitute x and y
+	// now x' is only in terms of the new angle
+	// y':
+	// y' = l*(sin(a)cos(b) + sin(b)cos(a))    addition formula
+	// y' = l*sin(a)cos(b) + l*sin(b)cos(a)    distributive property
+	// y' = l*sin(a)cos(b) + l*cos(a)sin(b)    commutative property
+	// y' = y*cos(b) + x*sin(b)                  substitute x and y
+	// now y' is only in terms of the new angle
+	// Thus:
+	// x' = x*cos(b) - y*sin(b) 
+	// y' = y*cos(b) + x*sin(b)
+	// z' = z (2D rotation)
+
+	// Formula for 2D rotation about z axis in matrix form
+	// x' = |cosb -sinb  0.0  0.0|   x
+	// y' = |sinb  cosb  0.0  0.0| * y 
+	// z' = |0.0   0.0   1.0  0.0|   z
+	// w' = |0.0   0.0   0.0  1.0|   w
+
+	// Column major form
+	// cosb  sinb  0.0  0.0
+	// -sinb cosb  0.0  0.0
+	// 0.0   0.0   1.0  0.0
+	// 0.0   0.0   0.0  1.0
+
+	this.tempArray = [
+      cosb,   sinb, 0.0, 0.0,
+      -sinb,  cosb, 0.0, 0.0,
+      0.0,    0.0,  1.0, 0.0,
+      0.0,    0.0,  0.0, 1.0
+	];
+	this.floatArray = new Float32Array(this.tempArray);
+};
+
+TransformMatrix.prototype.CreateScale = function(Sx, Sy, Sz){
+	this.tempArray = [
+      Sx,   0.0, 0.0, 0.0,
+      0.0,  Sy,  0.0, 0.0,
+      0.0,  0.0, Sz,  0.0,
+      0.0,  0.0, 0.0, 1.0
+  ];
+	this.floatArray = new Float32Array(this.tempArray);
+};
+
+TransformMatrix.prototype.Mult2DRotation = function(angle){
+	// convert to radians
+	var radians = angle * (Math.PI/180);
+	var cosb = Math.cos(radians);
+	var sinb = Math.sin(radians);
+
+	// Ready multiplication
+	var multArray = [
+      cosb,   sinb, 0.0, 0.0,
+      -sinb,  cosb, 0.0, 0.0,
+      0.0,    0.0,  1.0, 0.0,
+      0.0,    0.0,  0.0, 1.0
+	];
+
+	this.tempArray = this.MatrixMultiply(this.tempArray, multArray);
+	this.floatArray = new Float32Array(this.tempArray);
+}
+
+TransformMatrix.prototype.MultTranslation = function(Tx, Ty, Tz){
+	var multArray = [
+      1.0,  0.0, 0.0, 0.0,
+      0.0,  1.0, 0.0, 0.0,
+      0.0,  0.0, 1.0, 0.0,
+      Tx,  Ty, Tz, 1.0
+	];
+
+	this.tempArray = this.MatrixMultiply(this.tempArray, multArray);
+	this.floatArray = new Float32Array(this.tempArray);
+};
+
+TransformMatrix.prototype.MultScale = function(Sx, Sy, Sz){
+	var multArray = [
+      Sx,   0.0, 0.0, 0.0,
+      0.0,  Sy,  0.0, 0.0,
+      0.0,  0.0, Sz,  0.0,
+      0.0,  0.0, 0.0, 1.0
+  ];
+
+	this.tempArray = this.MatrixMultiply(this.tempArray, multArray);
+	this.floatArray = new Float32Array(this.tempArray);
+};
+
+
+// Global variables ------------------------------------------------------
+var g_points = []; // The array for the position of a mouse press
+var n = 0; // number of vertices
+
+// All the transformation variables
+// The translation distance for x, y, and z direction
+var Tx = 0.0, Ty = 0.0, Tz = 0.0;
+// The rotation angle for 2D rotation counter-clockwise (right hand rule) along z axis in degrees (not radians)
+var angle = 0.0;
+// Scaling variables
+var Sx = 1.0, Sy = 1.0, Sz = 1.0;
+
+// Matrix transformation class
+var transformation = new TransformMatrix();
+
+// HelloPoint1.js (c) 2012 matsuda
+// Vertex shader program
+var VSHADER_SOURCE =
+  'attribute vec4 a_Position;\n' +
+  'uniform mat4 u_xformMatrix;\n' +
+  'void main() {\n' +
+  '  gl_Position = u_xformMatrix * a_Position;\n' +
+  '}\n';
+
+// Fragment shader program
+var FSHADER_SOURCE =
+  'void main() {\n' +
+  '  gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);\n' +
+  '}\n';
+  
+// For FPS calculation
+var now, elapsed, then;
+  
+// End Global variables --------------------------------------------
+ 
+function main() {
+
+/*
+  var testarray = [
+      1.0,  5.0,  9.0,  13.0,
+      2.0,  6.0,  10.0, 14.0,
+      3.0,  7.0,  11.0, 15.0,
+      4.0,  8.0,  12.0, 16.0
+  ];
+    var testarray = [
+      1.0,  2.0,  3.0,  4.0,
+      5.0,  6.0,  7.0, 8.0,
+      9.0,  10.0,  11.0, 12.0,
+      13.0,  14.0,  15.0, 16.0
+  ];
+  var identarray = [
+      1.0,   0.0, 0.0, 0.0,
+      0.0,  1.0,  0.0, 0.0,
+      0.0,  0.0, 1.0,  0.0,
+      0.0,  0.0, 0.0, 1.0
+  ];
+  console.log(transformation.MatrixMultiply(identarray, testarray));
+  //console.log(transformation.MatrixMultiply(testarray, identarray));
+  */
+
+  // Retrieve <canvas> element
+  var canvas = document.getElementById('myCanvas');
+  
+  // setup event handler
+  canvas.onclick = (function(ev){click(ev,gl,canvas)});
+  
+  // setup shader programs 
+  setupText(canvas);
+
+  // Specify the color for clearing <canvas>
+  gl.clearColor(0, 0, 0, 1);
+
+  // Clear <canvas>
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  // Draw the vertices
+  animate(gl,n);
+}
+
+function click(ev, gl, canvas) {
+  var x = ev.clientX; // x coordinate of a mouse pointer
+  var y = ev.clientY; // y coordinate of a mouse pointer
+  var rect = ev.target.getBoundingClientRect() ;
+
+  x = ((x - rect.left) - canvas.width/2)/(canvas.width/2);
+  y = (canvas.height/2 - (y - rect.top))/(canvas.height/2);
+  // Store the coordinates to g_points array
+  g_points.push(x); g_points.push(y);
+
+  n = g_points.length/2;
+  //document.getElementById("fps").innerHTML = n;
+  //draw(gl, a_Position);
+  initVertexBuffers(gl);
+}
+
+function draw(gl){
+
+  // Get selection for type of rendering of the vertices
+  var selection = document.getElementById("selection").value;
+  // Get selection order of transformations
+  var orders = document.getElementsByName("order");
+  var order; // will store the value of the order
+  // radio button accession from this stackoverflow answer:
+  //http://stackoverflow.com/questions/9561625/checking-value-of-radio-button-group-via-javascript
+  for(i=0; i< orders.length; i++){
+	if(orders[i].checked===true){
+		order = orders[i].value;
+	}
+  }
+  
+  // Clear <canvas>
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  
+  // Use the global transformation object to do a transformation
+  // First transform (CREATE)
+  if(order === "TRS" || order === "TSR"){
+	transformation.CreateTranslation(Tx,Ty,Tz);
+  }
+  else if(order === "RTS" || order === "RST"){
+	transformation.Create2DRotation(angle);
+  }
+  else{ //STR || SRT
+	transformation.CreateScale(Sx,Sy,Sz);
+  }
+  // Second transform (MULT)
+  if(order === "RTS" || order === "STR"){
+	transformation.MultTranslation(Tx,Ty,Tz);
+  }
+  else if(order === "TRS" || order === "SRT"){
+	transformation.Mult2DRotation(angle);
+  }
+  else{ //TSR || RST
+	transformation.MultScale(Sx,Sy,Sz);
+  }
+  // Third transform (MULT)
+  if(order === "SRT" || order === "RST"){
+	transformation.MultTranslation(Tx,Ty,Tz);
+  }
+  else if(order === "TSR" || order === "STR"){
+	transformation.Mult2DRotation(angle);
+  }
+  else{ //TRS || RTS
+	transformation.MultScale(Sx,Sy,Sz);
+  }
+  
+  
+  // First transform (SET)
+  //transformation.CreateTranslation(Tx,Ty,Tz);
+  //transformation.Create2DRotation(angle);
+  //transformation.CreateScale(Sx,Sy,Sz);
+  // Second transform (MULT)
+  //transformation.Mult2DRotation(angle);
+  //transformation.MultTranslation(Tx,Ty,Tz);
+  //transformation.MultScale(Sx,Sy,Sz);
+  // Third transform (MULT)
+  //transformation.Mult2DRotation(angle);
+  //transformation.MultTranslation(Tx,Ty,Tz);
+  //transformation.MultScale(Sx,Sy,Sz);
+
+  // Pass the transformation matrix to the vertex shader via Uniform Variable
+  var u_xformMatrix = gl.getUniformLocation(gl.program, 'u_xformMatrix');
+  if (!u_xformMatrix) {
+    console.log('Failed to get the storage location of u_xformMatrix');
+    return;
+  }
+  //gl.uniformMatrix4fv(u_xformMatrix, false, xformMatrix);
+  gl.uniformMatrix4fv(u_xformMatrix, false, transformation.floatArray);
+  
+  /*
+  // Pass the translation distance to the vertex shader
+  var u_Translation = gl.getUniformLocation(gl.program, 'u_Translation');
+  if (!u_Translation) {
+    console.log('Failed to get the storage location of u_Translation');
+    return;
+  }
+  gl.uniform4f(u_Translation, Tx, Ty, Tz, 0.0);
+  */
+  
+  switch(selection){
+	case "lines":
+		gl.drawArrays(gl.LINES, 0, n);
+		break;
+	case "line_strip":
+	gl.drawArrays(gl.LINE_STRIP, 0, n);
+		break;
+	case "line_loop":
+		gl.drawArrays(gl.LINE_LOOP, 0, n);
+		break;
+	case "triangles":
+		gl.drawArrays(gl.TRIANGLES, 0, n);
+		break;
+	case "triangle_strip":
+		gl.drawArrays(gl.TRIANGLE_STRIP, 0, n);
+		break;
+	case "triangle_fan":
+		gl.drawArrays(gl.TRIANGLE_FAN, 0, n);
+		break;
+  }
+  //gl.drawArrays(gl.TRIANGLES, 0, n);
+}
+
+function initVertexBuffers(gl) {
+//  var vertices = new Float32Array([
+//    0.0, 0.5,   -0.5, -0.5,   0.5, -0.5
+//  ]);
+//  var n = 3; // The number of vertices
+  
+  var vertices = new Float32Array(g_points.length);
+
+  // fill the vertices
+  for(var i=0; i<g_points.length; i++){
+	vertices[i] = g_points[i];
+  }
+  
+  // Create a buffer object
+  var vertexBuffer = gl.createBuffer();
+  if (!vertexBuffer) {
+    console.log('Failed to create the buffer object');
+    return -1;
+  }
+
+  // Bind the buffer object to target
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+  // Write date into the buffer object
+  gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+  var a_Position = gl.getAttribLocation(gl.program, 'a_Position');
+  if (a_Position < 0) {
+    console.log('Failed to get the storage location of a_Position');
+    return -1;
+  }
+  // Assign the buffer object to a_Position variable
+  gl.vertexAttribPointer(a_Position, 2, gl.FLOAT, false, 0, 0);
+
+  // Enable the assignment to a_Position variable
+  gl.enableVertexAttribArray(a_Position);
+  
+  //animate(gl);
+
+  return n;
+}
+
+function animate(gl){
+	draw(gl);
+	
+	now = Date.now();
+	elapsed = now - then;
+	
+	then = now;
+	
+	document.getElementById("fps").innerHTML = 1000/elapsed;
+	
+	requestAnimationFrame(function(){animate(gl)});
+}
+
+function xslider(){
+	slider = document.getElementById("slider1");
+	Tx = slider.value;
+}
+
+function yslider(){
+	slider = document.getElementById("slider2");
+	Ty = slider.value;
+}
+
+function angleslider(){
+	slider = document.getElementById("slider3");
+	angle = slider.value;
+}
+
+function scaleslider(){
+	slider = document.getElementById("slider4");
+	Sx = slider.value;
+}
+
+// Reset all transformations
+function reset(){
+	Tx = 0.0;
+	Ty = 0.0;
+	Tz = 0.0;
+
+	angle = 0.0;
+
+	Sx = 1.0;
+	Sy = 1.0;
+	Sz = 1.0;
+
+	document.getElementById("slider1").value = 0;
+	document.getElementById("slider2").value = 0;
+	document.getElementById("slider3").value = 0;
+	document.getElementById("slider4").value = 0;
+}
+
+
+
+main();
+
+
+// WebGL Utility functions below
+// Not specific to this program
+
+// Call this function to ready text rendering
+function setupText(canvas){
+  // Get a WebGL context inspired from example on MDN:
+  // https://developer.mozilla.org/en-US/docs/Web/WebGL/Getting_started_with_WebGL
+  gl = null;
+  gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+    // Make sure we got a context
+  if (!gl) {
+    alert("Failed to initialize WebGL. Please use a WebGL compatible browser.");
+    gl = null;
+    return;
+  }
+
+  // IMPORTANT
+  // This code allows WebGL to do transparencies
+  // Without these lines, a white box will show up
+  // from: http://webglfundamentals.org/webgl/lessons/webgl-text-texture.html
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  
+  // Initialize shaders
+   if (!initializeShaders(gl, VSHADER_SOURCE, FSHADER_SOURCE)) {
+    console.log('Failed to intialize shaders.');
+    return;
+  }
+}
+
+function initializeShaders(gl, vshader, fshader){
+	// make and verify vertex shader object
+	var vertexShader = gl.createShader(gl.VERTEX_SHADER);
+	if(vertexShader == null){
+		console.log("Unable to create vertex shader");
+		return false;
+	}
+	
+	// set vertex shader program source and compile
+	gl.shaderSource(vertexShader, vshader);
+	gl.compileShader(vertexShader);
+	
+	// Check result of vertexShader compilation
+	if(!(gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS))){
+		var errorMsg = gl.getShaderInfoLog(vertexShader);
+		console.log('Failed to compile vertex shader: ' + errorMsg);
+		gl.deleteShader(vertexShader);
+		return false;
+	}
+	
+	
+	// make and verify fragment shader object
+	var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+	if(fragmentShader == null){
+		console.log("Unable to create fragment shader");
+		return false;
+	}
+	
+	// set fragment shader program source and compile
+	gl.shaderSource(fragmentShader, fshader);
+	gl.compileShader(fragmentShader);
+	
+	// Check result of fragmentShader compilation
+	if(!(gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS))){
+		var errorMsg = gl.getShaderInfoLog(fragmentShader);
+		console.log('Failed to compile fragment shader: ' + errorMsg);
+		gl.deleteShader(fragmentShader);
+		return false;
+	}
+
+	// Verify both shaders created
+	if(!vertexShader || !fragmentShader){
+		console.log("shaders no load");
+		return false;
+	}
+
+	// make and verify program object
+	var program = gl.createProgram();
+	if(!program){
+		console.log("program no create");
+		return false;
+	}
+
+	// Attach vertex and fragment shader to program object
+	gl.attachShader(program, vertexShader);
+	gl.attachShader(program, fragmentShader);
+
+	// Link program and verify linkng
+	gl.linkProgram(program);
+	if(!(gl.getProgramParameter(program, gl.LINK_STATUS))){
+		var errorMsg = gl.getProgramInfoLog(program);
+		console.log('Program filed to link: ' + errorMsg);
+		gl.deleteProgram(program);
+		gl.deleteShader(fragmentShader);
+		gl.deleteShader(vertexShader);
+		console.log("no program got");
+		return false;
+	}
+
+	// Use and set the program
+	gl.useProgram(program);
+	gl.program = program;
+	return true;
+}
+
+
+
+/*
+function main() {
+  // Retrieve <canvas> element
+  var canvas = document.getElementById('myCanvas');
+
+  // Get the rendering context for WebGL
+  setupText(canvas);
+
+  // Specify the color for clearing <canvas>
+  gl.clearColor(0.0, 0.0, 0.0, 1.0);
+
+  animate();
+}
+main();
+
+function animate(){
+	draw();
+	
+	now = Date.now();
+	elapsed = now - then;
+	
+	then = now;
+	
+	document.getElementById("fps").innerHTML = elapsed*1000;
+	
+	requestAnimationFrame(animate);
+}
+
+function draw(){
+  // Clear <canvas>
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  // Draw a point
+  gl.drawArrays(gl.POINTS, 0, 1);
+}
+
+// Call this function to ready text rendering
+function setupText(canvas){
+  // Get a WebGL context inspired from example on MDN:
+  // https://developer.mozilla.org/en-US/docs/Web/WebGL/Getting_started_with_WebGL
+  gl = null;
+  gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+    // Make sure we got a context
+  if (!gl) {
+    alert("Failed to initialize WebGL. Please use a WebGL compatible browser.");
+    gl = null;
+    return;
+  }
+
+  // IMPORTANT
+  // This code allows WebGL to do transparencies
+  // Without these lines, a white box will show up
+  // from: http://webglfundamentals.org/webgl/lessons/webgl-text-texture.html
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  
+  // Initialize shaders
+   if (!initializeShaders(gl, VSHADER_SOURCE, FSHADER_SOURCE)) {
+    console.log('Failed to intialize shaders.');
+    return;
+  }
+}
+
+function initializeShaders(gl, vshader, fshader){
+	// make and verify vertex shader object
+	var vertexShader = gl.createShader(gl.VERTEX_SHADER);
+	if(vertexShader == null){
+		console.log("Unable to create vertex shader");
+		return false;
+	}
+	
+	// set vertex shader program source and compile
+	gl.shaderSource(vertexShader, vshader);
+	gl.compileShader(vertexShader);
+	
+	// Check result of vertexShader compilation
+	if(!(gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS))){
+		var errorMsg = gl.getShaderInfoLog(vertexShader);
+		console.log('Failed to compile vertex shader: ' + errorMsg);
+		gl.deleteShader(vertexShader);
+		return false;
+	}
+	
+	
+	// make and verify fragment shader object
+	var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+	if(fragmentShader == null){
+		console.log("Unable to create fragment shader");
+		return false;
+	}
+	
+	// set fragment shader program source and compile
+	gl.shaderSource(fragmentShader, fshader);
+	gl.compileShader(fragmentShader);
+	
+	// Check result of fragmentShader compilation
+	if(!(gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS))){
+		var errorMsg = gl.getShaderInfoLog(fragmentShader);
+		console.log('Failed to compile fragment shader: ' + errorMsg);
+		gl.deleteShader(fragmentShader);
+		return false;
+	}
+
+	// Verify both shaders created
+	if(!vertexShader || !fragmentShader){
+		console.log("shaders no load");
+		return false;
+	}
+
+	// make and verify program object
+	var program = gl.createProgram();
+	if(!program){
+		console.log("program no create");
+		return false;
+	}
+
+	// Attach vertex and fragment shader to program object
+	gl.attachShader(program, vertexShader);
+	gl.attachShader(program, fragmentShader);
+
+	// Link program and verify linkng
+	gl.linkProgram(program);
+	if(!(gl.getProgramParameter(program, gl.LINK_STATUS))){
+		var errorMsg = gl.getProgramInfoLog(program);
+		console.log('Program filed to link: ' + errorMsg);
+		gl.deleteProgram(program);
+		gl.deleteShader(fragmentShader);
+		gl.deleteShader(vertexShader);
+		console.log("no program got");
+		return false;
+	}
+
+	// Use and set the program
+	gl.useProgram(program);
+	gl.program = program;
+	return true;
+}
+
+
+
+/*
+var canvas = document.getElementById("myCanvas");
+var ctx = canvas.getContext("2d");
+
+var then = Date.now();
+var startTime=then;
+var elapsed;
+
+function draw(){
+	max = 10;
+	randX = Math.floor((Math.random()*2-1)*max);
+	randY = Math.floor((Math.random()*2-1)*max);
+	ctx.font = "30px Arial";
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	ctx.fillText("Hello World",170+randX,200+randY);
+	ctx.fillText("Hello World",160+randX,210+randY);
+	ctx.fillText("Hello World",130+randX,190+randY);
+	ctx.fillText("Hello World",140+randX,220+randY);
+	ctx.fillText("Hello World",150+randX,180+randY);
+}
+
+function animate(){
+	draw();
+	
+	now = Date.now();
+	elapsed = now - then;
+	
+	then = now;
+	
+	document.getElementById("fps").innerHTML = elapsed*1000;
+	
+	requestAnimationFrame(animate);
+}
+
+animate();
+*/
+</script>

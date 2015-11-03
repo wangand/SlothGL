@@ -1,0 +1,151 @@
+<html>
+<head>
+<style>
+canvas
+{
+	border-style:solid;
+	border-width:1px;
+}
+</style>
+</head>
+
+<body>
+<div style="position:relative;width:800px;height:800px" id="container">
+    <canvas id = "myCanvas" width="800" height="800"></canvas>
+    <!input type="text" id="PC" style="position:absolute;left:0px;top:200px;width:200px; etc...." />
+	<!nput type="text" id="IM" style="position:absolute;left:0px;top:0px;width:100px; etc...." />
+	<!input type="text" id="PCinfo" style="position:absolute; border:none" value = "PC"/>
+	<input type = "button" id="clock" value = "old clock" onclick = "oldRunClock()">
+	<input type = "button" id="clock" value = "clock" onclick = "RunClock()">
+</div>
+
+<script>
+//Set up the canvas
+var c = document.getElementById("myCanvas");
+var ctx = c.getContext("2d");
+
+function DrawArrow2(startX, startY, endX, endY, val)
+{
+	// Line variables
+	var slope = (endY-startY)/(endX-startX);
+	var midX = ((startX+endX)*.50);
+	var midY = ((startY+endY)*.50);
+	var arrowX = midX;
+	var arrowY = midY;
+	var midDist = Math.sqrt( Math.pow((midX-startX),2) + Math.pow((midY-startY),2) );
+	midX = (midX-startX)*1.25 + startX; // scale the midpoint
+	midY = (midY-startY)*1.25 + startY;
+
+	// Normalize the vector and multiply by 10 to make line longer
+	arrowX = 10*(midX - startX)/midDist;
+	arrowY = 10*(midY - startY)/midDist;
+	arrowX = midX - arrowX;
+	arrowY = midY - arrowY;
+	
+	// Rotate the now normalized line 
+	var posX = (arrowX-midX)*Math.cos(Math.PI/12)-(arrowY-midY)*Math.sin(Math.PI/12) + midX;
+	var posY = (arrowY-midY)*Math.cos(Math.PI/12)+(arrowX-midX)*Math.sin(Math.PI/12) + midY;
+	var negX = (arrowX-midX)*Math.cos(-Math.PI/12)-(arrowY-midY)*Math.sin(-Math.PI/12) + midX;
+	var negY = (arrowY-midY)*Math.cos(-Math.PI/12)+(arrowX-midX)*Math.sin(-Math.PI/12) + midY;
+	
+	// Draw actions
+	ctx.moveTo(startX,startY);
+	ctx.lineTo(midX, midY); // midpoint
+	
+	ctx.lineTo(posX, posY);
+	ctx.moveTo(midX, midY);// back to mid
+	
+	
+	ctx.lineTo(negX, negY);
+	ctx.moveTo(midX, midY);// back to mid
+	
+	ctx.lineTo(endX, endY);
+	ctx.stroke();
+	
+	var info = document.createElement("input");
+	info.type = "text";
+	info.style.position = "absolute";
+	info.style.left = midX+10+"px";
+	info.style.top = midY-10+"px";
+	info.style.width = 30+"px";
+	info.value = val;
+	document.getElementById("container").appendChild(info);
+}
+
+
+
+// Unsullied classes and functions*********************************************
+// Base class
+function Component(xcor, ycor, width, nimi)
+{
+	this.x = xcor;
+	this.y = ycor;
+	this.w = width;
+	this.name = nimi;
+	this.inputList = new Array;
+	this.outputList = new Array;
+	this.storedValue = 0;
+	this.outputValue = 0;
+	
+	this.input = document.createElement("input");
+	this.info = document.createElement("input");
+	
+	this.AddComponent();
+}
+Component.prototype.AddComponent = function()
+{
+	//var input = document.createElement("input");
+	this.input.type = "text";
+	this.input.id = name;
+	this.input.style.position = "absolute";
+	this.input.style.left = this.x+"px";
+	this.input.style.top = this.y+"px";
+	this.input.style.width = this.w+"px";
+	document.getElementById("container").appendChild(this.input);
+	
+	//var info = document.createElement("input");
+	this.info.type = "text";
+	this.info.id = this.name+"info";
+	this.info.value = this.name;
+	this.info.style.position = "absolute";
+	this.info.style.left = this.x+this.w+"px";
+	this.info.style.top = this.y+"px";
+	this.info.style.width = 30+"px";
+	this.info.style.border = "none";
+	document.getElementById("container").appendChild(this.info);
+};
+
+
+function LinkComponents(first, last, val)
+{
+	DrawArrow2(first.x + (first.w/2), first.y+12, last.x + (last.w/2), last.y+12, val);
+	//first.outputList.push(last);
+	//last.inputList.push(first);
+}
+
+// end unsullied classes and functions*****************************************
+
+
+// MAIN FUNCTION************************
+var compA = new Component(20,20,10, "A");
+var compB = new Component(20,120,10, "B");
+var compC = new Component(20,220,10, "C");
+var compD = new Component(120,20,10, "D");
+var compE = new Component(120,120,10, "E");
+var compF = new Component(220,120,10, "F");
+LinkComponents(compA, compB, 7);
+LinkComponents(compB, compC, 6);
+LinkComponents(compB, compE, 8);
+LinkComponents(compD, compE, 9);
+LinkComponents(compC, compE, 7);
+LinkComponents(compE, compF, 4);
+
+
+// END MAIN FUNCTION*********************
+
+
+
+</script>
+
+</body>
+<html>
