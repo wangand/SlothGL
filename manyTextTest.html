@@ -1,0 +1,97 @@
+ <canvas id="myCanvas" width="1024" height="512" style="border:1px solid #000000;">
+</canvas> 
+<div id="fps">
+hello
+</div>
+
+<script src="SlothGL3.0.js"></script>
+
+<script>
+
+// Random words
+var loremipsum = [
+	"Lorem", "ipsum", "dolor", "sit", "amet,", "consectetur", "adipiscing", "elit,", "sed do",
+	"eiusmod", "tempor", "incididunt", "ut", "labore", "et", "dolore", "magna", "aliqua.", "Ut enim", "ad", "minim",
+	"veniam,", "quis", "nostrud", "exercitation", "ullamco", "laboris", "nisi", "ut", "aliquip", "ex ea", "commodo", "consequat.",
+	"Duis", "aute", "irure", "dolor", "in", "reprehenderit", "in", "voluptate", "velit", "esse", "cillum", "dolore", "eu",
+	"fugiat", "nulla", "pariatur.", "Excepteur", "sint", "occaecat", "cupidatat", "non", "proident,", "sunt", "in", "culpa", 
+	"qui", "officia", "deserunt", "mollit", "anim", "id est", "laborum.",
+	"123", "456", "789", "0!@#"
+];
+// Global variables ------------------------------------------------------
+var renderer = new SlothGL();
+  
+// For FPS calculation
+var now, elapsed, then;
+  
+// End Global variables --------------------------------------------
+ 
+function main() {
+	// Retrieve <canvas> element
+	var canvas = document.getElementById('myCanvas');
+
+	// setup event handler
+	//canvas.onclick = (function(ev){click(ev,renderer.gl,canvas)});
+
+	// setup shader programs 
+	renderer.setup(canvas);
+	shapesArray = [];
+	
+	// Push many words
+	var vertical = 50;
+	var horiz = 50;
+	var horizModifier = 20;
+	var verticalModifier = horizModifier/2.5;
+	var idCounter = 0;
+	for(i=0; i<vertical; i++){
+		for(j=0; j<horiz; j++){
+			// get a random word
+			
+			index = Math.floor(Math.random()*loremipsum.length);
+			//renderer.fillText(loremipsum[index], 0+j*horizModifier, 0+i*verticalModifier);
+			shapesArray.push({type: "text", text: loremipsum[index], x:0+j*horizModifier, y:i*verticalModifier, id:"n"+idCounter
+			});
+			idCounter++;
+		}
+	}
+	
+	shapesArray.push({type: "text", text: "cat", x:10, y:10, id:"bob", font:"50px arial", color:"blue"});
+	shapesArray.push({type: "rect", x:120, y:120, height: 10, width: 10, id:"george", color:"red"});
+	
+	// ** SlothGL 3.0's new declarative interface **
+	data = {
+		shapes: shapesArray, // made in loop
+		data: []
+	};
+	renderer.parse(data);
+
+	animate();
+}
+
+
+function animate(){
+	// Keep time
+	now = Date.now();
+	elapsed = now - then;
+	then = now;
+	document.getElementById("fps").innerHTML = 1000/elapsed;	
+
+	// animate
+	for(var i in renderer.idHolder){
+		renderer.idHolder[i].Tx += (Math.random()*2 -1)/1;
+		renderer.idHolder[i].Ty += (Math.random()*2 -1)/1;
+	}
+
+	//renderer.idHolder["bob"].Tx += Math.sin(vBob)*10;
+	//renderer.idHolder["george"].Ty += (Math.random()*2 -1)*2;
+	//renderer.idHolder["bob"].Tx += (Math.random()*2 -1)*2;
+	renderer.render();
+	
+	// 30 goto 10
+	requestAnimationFrame(function(){animate()});
+}
+
+
+main();
+
+</script>

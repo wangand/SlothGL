@@ -1,0 +1,79 @@
+ <canvas id="myCanvas" width="512" height="512" style="border:1px solid #000000;">
+</canvas> 
+<div id="fps">
+hello
+</div>
+
+<script src="SlothGL3.0.js"></script>
+
+<script>
+// Global variables ------------------------------------------------------
+var g_points = []; // The array for the position of a mouse press
+var n = 0; // number of vertices
+
+// All the transformation variables
+// The translation distance for x, y, and z direction
+var Tx = 0.0, Ty = 0.0, Tz = 0.0;
+// The rotation angle for 2D rotation counter-clockwise (right hand rule) along z axis in degrees (not radians)
+var angle = 0.0;
+// Scaling variables
+var Sx = 1.0, Sy = 1.0, Sz = 1.0;
+
+// Matrix transformation class
+var transformation = new TransformMatrix();
+
+var renderer = new SlothGL();
+  
+// For FPS calculation
+var now, elapsed, then;
+  
+// End Global variables --------------------------------------------
+ 
+function main() {
+	// Retrieve <canvas> element
+	var canvas = document.getElementById('myCanvas');
+
+	// setup event handler
+	//canvas.onclick = (function(ev){click(ev,renderer.gl,canvas)});
+
+	// setup shader programs 
+	renderer.setup(canvas);
+
+
+	// ** SlothGL 3.0's new declarative interface **
+	data = {
+		shapes: [
+			{type: "text", text: "cat", x:10, y:10, id:"bob", font:"50px arial", color:"blue"},
+			{type: "rect", x:120, y:120, height: 10, width: 10, id:"george", color:"red"}
+		],
+		data: []
+	};
+	renderer.parse(data);
+
+	animate();
+}
+
+var vBob = 0;
+var vGeorge = 0;
+function animate(){
+	// Keep time
+	now = Date.now();
+	elapsed = now - then;
+	then = now;
+	document.getElementById("fps").innerHTML = 1000/elapsed;	
+
+	// animate
+	vBob += .1;
+	vGeorge += .1;
+	renderer.idHolder["bob"].Tx += Math.sin(vBob)*10;
+	renderer.idHolder["george"].Ty += Math.cos(vGeorge)*10;
+	renderer.render();
+	
+	// 30 goto 10
+	requestAnimationFrame(function(){animate()});
+}
+
+
+main();
+
+</script>

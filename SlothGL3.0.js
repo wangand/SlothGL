@@ -41,6 +41,11 @@ SlothGL = function(){
 	  '  gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);\n' +
 	  '}\n';
 	
+	// links to objects for interactivity
+	// Links are generated when, in declarative interface,
+	// object is generated with a defined "id" thing
+	this.idHolder = {};
+	
 	// WebGL program
 	this.gl;
 	
@@ -72,6 +77,14 @@ SlothGL = function(){
 	// Projection matrix to give 2D-canvas-like coordinates
 	// Default as identity matrix
 	this.projectionMatrix = new Float32Array([
+		1.0,  0.0, 0.0, 0.0,
+		0.0,  1.0, 0.0, 0.0,
+		0.0,  0.0, 1.0, 0.0,
+		0.0,  0.0, 0.0, 1.0
+	]);
+	
+	// Identity matrix
+	this.identityMatrix = new Float32Array([
 		1.0,  0.0, 0.0, 0.0,
 		0.0,  1.0, 0.0, 0.0,
 		0.0,  0.0, 1.0, 0.0,
@@ -112,7 +125,7 @@ SlothGL.prototype.setup = function(canvas){
 	this.flatProgram = this.initializeShaders(this.gl, this.vshader_flat, this.fshader_flat);
 	this.texProgram = this.initializeShaders(this.gl, this.vshader_tex, this.fshader_tex);
 	
-		// Default flat mode
+	// Default to texture mode
 	//this.flatMode();
 	this.texMode();
 	
@@ -257,6 +270,15 @@ SlothGL.prototype.texMode = function(){
 		return;
 	}
 	this.gl.uniformMatrix4fv(u_projectMatrix, false, this.projectionMatrix);
+	
+	// Default transformation to identity matrix
+	// Pass the transformation matrix to the vertex shader via Uniform Variable
+	var u_xformMatrix = this.gl.getUniformLocation(this.gl.program, 'u_xformMatrix');
+	if (!u_xformMatrix) {
+		console.log('Failed to get the storage location of u_xformMatrix');
+		return;
+	}
+  this.gl.uniformMatrix4fv(u_xformMatrix, false, this.identityMatrix);
 };
 
 // This function switches to a flat shading program
@@ -273,6 +295,15 @@ SlothGL.prototype.flatMode = function(){
 		return;
 	}
 	this.gl.uniformMatrix4fv(u_projectMatrix, false, this.projectionMatrix);
+	
+		// Default transformation to identity matrix
+	// Pass the transformation matrix to the vertex shader via Uniform Variable
+	var u_xformMatrix = this.gl.getUniformLocation(this.gl.program, 'u_xformMatrix');
+	if (!u_xformMatrix) {
+		console.log('Failed to get the storage location of u_xformMatrix');
+		return;
+	}
+  this.gl.uniformMatrix4fv(u_xformMatrix, false, this.identityMatrix);
 };
 
 // This function clears the webgl canvas
@@ -743,7 +774,7 @@ SlothGL.prototype.fillRect = function(x, y, width, height){
 		}
 	}
 	else{
-		console.log("Already texture");
+		//console.log("Already texture");
 	}
 	
 	// Add texture
@@ -835,6 +866,70 @@ SlothGL.prototype.renderPath = function(){
 	return this.drawImage(this.pathCanvas, 0, 0, this.pathWidth, this.pathHeight);
 }
 
+// This function is the parser
+// Allows for declarative functionality
+SlothGL.prototype.parse = function(data){
+
+	// Check for shapes
+	if(!data.hasOwnProperty("shapes")){
+		console.log("Warning no shapes in data");
+		return;
+	}
+	
+	// Loop for shapes
+	for(var i = 0; i < data.shapes.length; i++){		
+		var shape = data.shapes[i];
+		switch(data.shapes[i].type){
+			case "text":
+				if(shape.id){
+					var ret = this.dataToText(shape);
+					this.idHolder[shape.id] = ret;
+				}
+				else{
+					this.dataToText(shape);
+				}
+				break;
+			case "rect":
+				if(shape.id){
+					var ret = this.dataToRect(shape);
+					this.idHolder[shape.id] = ret;
+				}
+				else{
+					this.this.dataToRect(shape);
+				}
+				break;
+			default: console.log("Parser: type of shape not found");
+		}
+	}
+};
+
+// This function converts object info to text
+// Used in parse()
+SlothGL.prototype.dataToText = function(shape){
+	// font change?
+	if(shape.font){
+		this.changeFont(shape.font);
+	}
+	
+	// color?
+	if(shape.color){
+		this.changeColor(shape.color);
+	}
+	
+	return this.fillText(shape.text, shape.x, shape.y);
+};
+
+// This function converts object info to rectangle
+// Used in parse()
+SlothGL.prototype.dataToRect = function(shape){
+	// color change?
+	if(shape.color){
+		this.changeColor(shape.color);
+	}
+	
+	return this.fillRect(shape.x, shape.y, shape.width, shape.height);
+};
+
 // This object holds textures and additional data
 Texture = function(canvas, x, y, fromX, fromY, width, height, texture){
 	this.canvas = canvas;
@@ -848,6 +943,7 @@ Texture = function(canvas, x, y, fromX, fromY, width, height, texture){
 	this.Tx = 0.0;
 	this.Ty = 0.0;
 	this.updated = false;
+	this.transformation = new TransformMatrix; // transforms stuff
 };
 
 Texture.prototype.canvasToST = function(x, y){
@@ -908,13 +1004,15 @@ Texture.prototype.render = function(gl){
 	this.gl.vertexAttribPointer(a_TexCoord, 2, this.gl.FLOAT, false, FSIZE * 4, FSIZE * 2);
 	this.gl.enableVertexAttribArray(a_TexCoord);  // Enable the assignment of the buffer object
 	
-	// Pass the translation distance to the vertex shader
-	 //var u_Translation = gl.getUniformLocation(gl.program, 'u_Translation');
-	 //if (!u_Translation) {
-	//	console.log('Failed to get the storage location of u_Translation');
-	//	return;
-	// }
-	 //gl.uniform4f(u_Translation, this.Tx, this.Ty, 0.0, 0.0);
+	
+	this.transformation.CreateTranslation(this.Tx,this.Ty,0);
+	// Pass the transformation matrix to the vertex shader via Uniform Variable
+	var u_xformMatrix = gl.getUniformLocation(gl.program, 'u_xformMatrix');
+	if (!u_xformMatrix) {
+		console.log('Failed to get the storage location of u_xformMatrix');
+		return;
+	}
+	gl.uniformMatrix4fv(u_xformMatrix, false, this.transformation.floatArray);
 	
 	// Draw the rectangle with texture
 	this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
